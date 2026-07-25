@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // ── ADDED: for FilteringTextInputFormatter
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
@@ -125,6 +126,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
+                // ── ADDED: only allow digits and one decimal point ──
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter an amount';
@@ -334,11 +339,14 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     required String hint,
     required IconData icon,
     TextInputType? keyboardType,
+    // ── ADDED: optional input formatters parameter ──
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters, // ── CHANGED: pass through formatters
       validator: validator,
       style: GoogleFonts.poppins(
         fontSize: 15,

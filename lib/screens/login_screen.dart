@@ -251,8 +251,10 @@ class _LoginScreenState extends State<LoginScreen> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!value.contains('@')) {
-                return 'Please enter a valid email';
+              // ── CHANGED: proper email format check ──
+              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+              if (!emailRegex.hasMatch(value)) {
+                return 'Please enter a valid email address';
               }
               return null;
             },
@@ -269,6 +271,22 @@ class _LoginScreenState extends State<LoginScreen> {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter your password';
+              }
+              // ── CHANGED: strong password validation ──
+              if (value.length < 8) {
+                return 'Password must be at least 8 characters';
+              }
+              if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                return 'Must contain an uppercase letter';
+              }
+              if (!RegExp(r'[a-z]').hasMatch(value)) {
+                return 'Must contain a lowercase letter';
+              }
+              if (!RegExp(r'[0-9]').hasMatch(value)) {
+                return 'Must contain a number';
+              }
+              if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                return 'Must contain a special character';
               }
               return null;
             },
@@ -354,8 +372,10 @@ class _LoginScreenState extends State<LoginScreen> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!value.contains('@')) {
-                return 'Please enter a valid email';
+              // ── CHANGED: proper email format check ──
+              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+              if (!emailRegex.hasMatch(value)) {
+                return 'Please enter a valid email address';
               }
               return null;
             },
@@ -373,8 +393,21 @@ class _LoginScreenState extends State<LoginScreen> {
               if (value == null || value.isEmpty) {
                 return 'Please enter a password';
               }
-              if (value.length < 6) {
-                return 'Password must be at least 6 characters';
+              // ── CHANGED: strong password validation ──
+              if (value.length < 8) {
+                return 'Password must be at least 8 characters';
+              }
+              if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                return 'Must contain an uppercase letter';
+              }
+              if (!RegExp(r'[a-z]').hasMatch(value)) {
+                return 'Must contain a lowercase letter';
+              }
+              if (!RegExp(r'[0-9]').hasMatch(value)) {
+                return 'Must contain a number';
+              }
+              if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+                return 'Must contain a special character';
               }
               return null;
             },
