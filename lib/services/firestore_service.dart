@@ -73,32 +73,38 @@ class FirestoreService {
     await _expensesCol.doc(id).delete();
   }
 
-  // ── Computed totals ────────────────────────────────────────────────
+  // ── Error mapping ──────────────────────────────────────────────────
 
-  /// Total amount of all expenses (isExpense == true).
-  Future<double> getTotalExpenses() async {
-    final expenses = await getExpenses();
-    double total = 0;
-    for (final e in expenses) {
-      if (e.isExpense) total += e.amount;
+  /// Converts a Firestore failure into a clear, actionable message
+  /// instead of hiding every problem behind a generic
+  /// "check your internet connection" text.
+  static String describeError(Object error) {
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'permission-denied':
+          return "Your account doesn't have permission to access this "
+              'data. Make sure you are signed in and that the Firestore '
+              'security rules allow owners to read and write their data.';
+        case 'unauthenticated':
+          return 'Your session has expired. Please log in again.';
+        case 'unavailable':
+          return 'Cannot reach Firestore right now. '
+              'Check your internet connection and try again.';
+        case 'network-request-failed':
+          return 'Network error. '
+              'Check your internet connection and try again.';
+        case 'failed-precondition':
+          return 'Firestore is not ready yet. Please try again shortly.';
+        case 'deadline-exceeded':
+          return 'The request timed out. Please try again.';
+        case 'resource-exhausted':
+          return 'Firestore quota exceeded for today. Please try again later.';
+        case 'invalid-argument':
+          return 'The entry could not be saved because some data was invalid.';
+        default:
+          return 'Firestore error (${error.code}). Please try again.';
+      }
     }
-    return total;
-  }
-
-  /// Total amount of all income entries (isExpense == false).
-  Future<double> getTotalIncome() async {
-    final expenses = await getExpenses();
-    double total = 0;
-    for (final e in expenses) {
-      if (!e.isExpense) total += e.amount;
-    }
-    return total;
-  }
-
-  /// Balance = total income - total expenses.
-  Future<double> getBalance() async {
-    final income = await getTotalIncome();
-    final expenses = await getTotalExpenses();
-    return income - expenses;
+    return 'An unexpected error occurred. Please try again.';
   }
 }

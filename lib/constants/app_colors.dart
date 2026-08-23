@@ -48,4 +48,21 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // ── Chart colors ─────────────────────────────────────────────────────
+  static const List<Color> chartPalette = [
+    Color(0xFF6C63FF), // Primary purple
+    Color(0xFF00D9A6), // Teal/accent
+    Color(0xFFFF6B6B), // Red/expense
+    Color(0xFFFFD93D), // Yellow
+    Color(0xFF6B5BFF), // Indigo
+    Color(0xFFFF8C69), // Coral
+    Color(0xFF4ECDC4), // Turquoise
+    Color(0xFFFF6B6B), // Pink
+    Color(0xFF95E1D3), // Mint
+    Color(0xFFF38181), // Salmon
+  ];
+
+  static const Color chartGridLine = Color(0xFFE8E8E8);
+  static const Color chartTooltipBg = Color(0xFF1E1E2D);
 }

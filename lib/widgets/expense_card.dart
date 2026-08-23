@@ -62,7 +62,7 @@ class ExpenseCard extends StatelessWidget {
 
             const SizedBox(width: 14),
 
-            // ── Title + category ──────────────────────────────────
+            // ── Title + category + date ──────────────────────────
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,6 +83,14 @@ class ExpenseCard extends StatelessWidget {
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    expense.formattedDate,
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

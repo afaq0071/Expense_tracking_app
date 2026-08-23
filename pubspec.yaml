@@ -33,11 +33,11 @@ dependencies:
 
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
-  shared_preferences: ^2.5.0
   uuid: ^4.5.1
   firebase_core: ^4.12.1
   firebase_auth: ^6.5.6
   cloud_firestore: ^6.7.1
+  fl_chart: ^0.69.2
 
 dev_dependencies:
   flutter_test:

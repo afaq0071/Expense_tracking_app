@@ -11,7 +11,7 @@ import '../services/firestore_service.dart';
 ///
 /// Contains a toggle to switch between expense/income mode,
 /// text fields for title and amount, a category picker, and
-/// a save button that persists the entry via [StorageService].
+/// a save button that persists the entry via [FirestoreService].
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
 
@@ -32,12 +32,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   /// Currently selected category.
   String _selectedCategory = Expense.expenseCategories.first;
 
+  /// True while the entry is being saved to Firestore.
+  bool _isSaving = false;
+
+  /// Shows the custom category text field when "Other" is selected.
+  bool _showCustomCategory = false;
+
+  /// Controller for the custom category text field.
+  final _customCategoryController = TextEditingController();
+
+  /// Selected transaction date (defaults to today).
+  DateTime _selectedDate = DateTime.now();
+
   // ── Lifecycle ──────────────────────────────────────────────────────
 
   @override
   void dispose() {
     _titleController.dispose();
     _amountController.dispose();
+    _customCategoryController.dispose();
     super.dispose();
   }
 
@@ -46,33 +59,107 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   List<String> get _categories =>
       _isExpense ? Expense.expenseCategories : Expense.incomeCategories;
 
+  // ── Date helpers ───────────────────────────────────────────────────
+
+  static const _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// Formats the selected date for display in the picker field.
+  String _formatSelectedDate() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dateOnly =
+        DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
+    final diff = today.difference(dateOnly).inDays;
+
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+
+    return '${_selectedDate.day} ${_monthNames[_selectedDate.month - 1]} ${_selectedDate.year}';
+  }
+
+  /// Opens the Material date picker and updates [_selectedDate].
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && mounted) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
   // ── Save handler ───────────────────────────────────────────────────
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Generate a unique ID using the uuid package.
-    final id = const Uuid().v4();
+    // Determine the final category string.
+    final String finalCategory;
+    if (_selectedCategory == 'Other') {
+      finalCategory = _customCategoryController.text.trim();
+      if (finalCategory.isEmpty) {
+        // Safety fallback (form validation should catch this).
+        return;
+      }
+    } else {
+      finalCategory = _selectedCategory;
+    }
 
-    // Parse the amount from the text field.
-    final amount = double.parse(_amountController.text.trim());
+    setState(() => _isSaving = true);
 
-    // Create the expense object.
-    final expense = Expense(
-      id: id,
-      title: _titleController.text.trim(),
-      amount: amount,
-      category: _selectedCategory,
-      date: DateTime.now(),
-      isExpense: _isExpense,
-    );
+    bool success = false;
 
-    // Save to Firestore.
-    await FirestoreService.instance.addExpense(expense);
+    try {
+      // Generate a unique ID using the uuid package.
+      final id = const Uuid().v4();
 
-    // Go back to the previous screen (home). The home screen will
-    // automatically refresh because it calls loadExpenses() on build.
-    if (mounted) Navigator.pop(context);
+      // Parse the amount from the text field.
+      final amount = double.parse(_amountController.text.trim());
+
+      // Create the expense object.
+      final expense = Expense(
+        id: id,
+        title: _titleController.text.trim(),
+        amount: amount,
+        category: finalCategory,
+        date: _selectedDate,
+        isExpense: _isExpense,
+      );
+
+      // Save to Firestore.
+      await FirestoreService.instance.addExpense(expense);
+      success = true;
+    } catch (e) {
+      if (!mounted) return;
+
+      // Surface the real cause (auth, rules, network…) — not a vague message.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            FirestoreService.describeError(e),
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.expense,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    } finally {
+      // Re-enable the save button so the user can retry after a failure.
+      if (mounted && !success) {
+        setState(() => _isSaving = false);
+      }
+    }
+
+    // Go back to the previous screen (home), which reloads on return.
+    if (success && mounted) Navigator.pop(context);
   }
 
   // ── Build ──────────────────────────────────────────────────────────
@@ -146,6 +233,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
               const SizedBox(height: 24),
 
+              // ── Date picker ───────────────────────────────────
+              Text(
+                'Date',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.inputFill,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today_outlined,
+                        color: AppColors.textSecondary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _formatSelectedDate(),
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
               // ── Category label ───────────────────────────────────
               Text(
                 'Category',
@@ -160,6 +291,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
               // ── Category chips ──────────────────────────────────
               _buildCategoryChips(),
+
+              // ── Custom category field (shown when "Other" is selected) ──
+              if (_showCustomCategory) ...[
+                const SizedBox(height: 12),
+                _buildTextField(
+                  controller: _customCategoryController,
+                  hint: 'Enter custom category',
+                  icon: Icons.label_outline_rounded,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter a category name';
+                    }
+                    return null;
+                  },
+                ),
+              ],
 
               const SizedBox(height: 40),
 
@@ -177,8 +324,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  onPressed: _save,
-                  child: Text(
+                  onPressed: _isSaving ? null : _save,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Text(
                     'Save ${_isExpense ? 'Expense' : 'Income'}',
                     style: GoogleFonts.poppins(
                       fontSize: 16,
@@ -213,6 +369,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 setState(() {
                   _isExpense = true;
                   _selectedCategory = Expense.expenseCategories.first;
+                  _showCustomCategory = false;
+                  _customCategoryController.clear();
                 });
               },
               child: Container(
@@ -250,6 +408,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 setState(() {
                   _isExpense = false;
                   _selectedCategory = Expense.incomeCategories.first;
+                  _showCustomCategory = false;
+                  _customCategoryController.clear();
                 });
               },
               child: Container(
@@ -293,7 +453,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       children: _categories.map((cat) {
         final isSelected = cat == _selectedCategory;
         return GestureDetector(
-          onTap: () => setState(() => _selectedCategory = cat),
+          onTap: () {
+            setState(() {
+              _selectedCategory = cat;
+              if (cat == 'Other') {
+                _showCustomCategory = true;
+              } else {
+                _showCustomCategory = false;
+                _customCategoryController.clear();
+              }
+            });
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

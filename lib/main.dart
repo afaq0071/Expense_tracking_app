@@ -7,6 +7,8 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/add_expense_screen.dart';
+import 'screens/budget_screen.dart';
+import 'screens/add_budget_screen.dart';
 
 /// Entry point — initializes Firebase before running the app.
 void main() async {
@@ -66,6 +68,8 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/add-expense': (context) => const AddExpenseScreen(),
+        '/budgets': (context) => const BudgetScreen(expenses: []),
+        '/add-budget': (context) => const AddBudgetScreen(),
       },
     );
   }

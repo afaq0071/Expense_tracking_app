@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
+import '../utils/validators.dart';
 
 /// Login and Signup screen with tab toggle.
 ///
@@ -70,13 +72,112 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!mounted) return;
 
-    setState(() => _isLoading = false);
-
     if (error != null) {
+      setState(() => _isLoading = false);
       _showError(error);
-    } else if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+      return;
     }
+
+    // ── Email verification check ────────────────────────────────────
+    // Credentials are valid; make sure the address is verified before
+    // entering the app.
+    final user = AuthService.instance.currentUser;
+    if (user != null && !user.emailVerified) {
+      final verified = await _showVerificationGate(user);
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (verified) {
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        // Still unverified — sign back out and stay on the login screen.
+        await AuthService.instance.logout();
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+    Navigator.pushReplacementNamed(context, '/home');
+  }
+
+  /// Blocks login until the account email is verified.
+  ///
+  /// Shows a dialog that lets the user resend the link or confirm once
+  /// they have clicked it (re-checks via [User.reload]).
+  /// Returns true when the email ends up verified, false otherwise.
+  Future<bool> _showVerificationGate(User user) async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            'Verify Your Email',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+          ),
+          content: Text(
+            'We sent a verification link to your email address.\n\n'
+            'Please open it, then tap "I\'ve Verified". You can also '
+            'request a new link below.',
+            style: GoogleFonts.poppins(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final error =
+                    await AuthService.instance.sendVerificationEmail();
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      error ??
+                          'Verification email sent. Please check your inbox.',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor:
+                        error == null ? AppColors.income : AppColors.expense,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+              },
+              child: Text(
+                'Resend Email',
+                style: GoogleFonts.poppins(color: AppColors.primary),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                // Re-read the profile from Firebase to pick up the
+                // latest verified flag.
+                await user.reload();
+                final refreshed = AuthService.instance.currentUser;
+                if (ctx.mounted) {
+                  Navigator.pop(ctx, refreshed?.emailVerified ?? false);
+                }
+              },
+              child: Text(
+                "I've Verified",
+                style: GoogleFonts.poppins(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _handleSignUp() async {
@@ -97,7 +198,28 @@ class _LoginScreenState extends State<LoginScreen> {
     if (error != null) {
       _showError(error);
     } else if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+      // Account created and a verification link was sent — guide the
+      // user to verify before logging in instead of entering the app.
+      setState(() {
+        _isLogin = true;
+        _clearControllers();
+        _obscurePassword = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Account created successfully. '
+            'Please check your email to verify your account.',
+            style: GoogleFonts.poppins(),
+          ),
+          backgroundColor: AppColors.income,
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 
@@ -247,17 +369,8 @@ class _LoginScreenState extends State<LoginScreen> {
             hint: 'Email address',
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your email';
-              }
-              // ── CHANGED: proper email format check ──
-              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-              if (!emailRegex.hasMatch(value)) {
-                return 'Please enter a valid email address';
-              }
-              return null;
-            },
+            // ── CHANGED: shared validator with modern-TLD support ──
+            validator: Validators.validateEmail,
           ),
 
           const SizedBox(height: 16),
@@ -268,28 +381,9 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icons.lock_outline_rounded,
             obscure: _obscurePassword,
             suffixIcon: _buildVisibilityToggle(),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your password';
-              }
-              // ── CHANGED: strong password validation ──
-              if (value.length < 8) {
-                return 'Password must be at least 8 characters';
-              }
-              if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                return 'Must contain an uppercase letter';
-              }
-              if (!RegExp(r'[a-z]').hasMatch(value)) {
-                return 'Must contain a lowercase letter';
-              }
-              if (!RegExp(r'[0-9]').hasMatch(value)) {
-                return 'Must contain a number';
-              }
-              if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
-                return 'Must contain a special character';
-              }
-              return null;
-            },
+            // ── CHANGED: login only requires a non-empty password;
+            // strength rules apply to signup, not to existing accounts. ──
+            validator: Validators.validateRequiredPassword,
           ),
 
           const SizedBox(height: 32),
@@ -353,12 +447,7 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _nameController,
             hint: 'Full name',
             icon: Icons.person_outline_rounded,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your name';
-              }
-              return null;
-            },
+            validator: Validators.validateName,
           ),
 
           const SizedBox(height: 16),
@@ -368,17 +457,8 @@ class _LoginScreenState extends State<LoginScreen> {
             hint: 'Email address',
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter your email';
-              }
-              // ── CHANGED: proper email format check ──
-              final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-              if (!emailRegex.hasMatch(value)) {
-                return 'Please enter a valid email address';
-              }
-              return null;
-            },
+            // ── CHANGED: shared validator with modern-TLD support ──
+            validator: Validators.validateEmail,
           ),
 
           const SizedBox(height: 16),
@@ -389,28 +469,8 @@ class _LoginScreenState extends State<LoginScreen> {
             icon: Icons.lock_outline_rounded,
             obscure: _obscurePassword,
             suffixIcon: _buildVisibilityToggle(),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a password';
-              }
-              // ── CHANGED: strong password validation ──
-              if (value.length < 8) {
-                return 'Password must be at least 8 characters';
-              }
-              if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                return 'Must contain an uppercase letter';
-              }
-              if (!RegExp(r'[a-z]').hasMatch(value)) {
-                return 'Must contain a lowercase letter';
-              }
-              if (!RegExp(r'[0-9]').hasMatch(value)) {
-                return 'Must contain a number';
-              }
-              if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
-                return 'Must contain a special character';
-              }
-              return null;
-            },
+            // ── CHANGED: strong password validation (signup only) ──
+            validator: Validators.validateStrongPassword,
           ),
 
           const SizedBox(height: 32),

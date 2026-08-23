@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Expense Tracker Firestore rules.
+//
+// Data layout (unchanged):
+//   users/{userId}                  → profile doc (name, email, createdAt)
+//   users/{userId}/expenses/{id}    → that user's income/expense entries
+//   users/{userId}/budgets/{id}     → that user's monthly budgets
+//
+// Policy: a signed-in user may create, read, update and delete ONLY
+// their own documents. Everyone else (including anonymous requests)
+// is denied. Deploy with:
+//   firebase deploy --only firestore:rules
+// or paste into Firebase Console → Firestore Database → Rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── Data rules ───────────────────────────────────────────────────
+    match /users/{userId} {
+      // Profile document: readable/writable only by its owner.
+      allow read, write: if isOwner(userId);
+
+      // Per-user expense sub-collection.
+      match /expenses/{expenseId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Per-user budget sub-collection.
+      match /budgets/{budgetId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Any other path is denied by default — no explicit rule = no access.
+  }
+}

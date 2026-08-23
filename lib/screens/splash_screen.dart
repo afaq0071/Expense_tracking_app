@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,9 +6,11 @@ import '../services/auth_service.dart';
 
 /// Splash screen shown on app launch.
 ///
-/// Displays branding for 2 seconds, then checks Firebase Auth state:
-/// - If user is logged in → navigate to /home
-/// - If user is logged out → navigate to /login
+/// Displays branding while Firebase resolves the real authentication state
+/// (via authStateChanges), then routes:
+/// - Logged in + verified → /home
+/// - Logged in but NOT verified → /login (verification guide is shown there)
+/// - Logged out → /login
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -22,23 +22,25 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateAfterDelay();
+    _routeAfterAuthCheck();
   }
 
-  /// Waits 2 seconds, then routes based on auth state.
-  Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(seconds: 2));
+  /// Waits for the first auth state emission, then routes accordingly.
+  Future<void> _routeAfterAuthCheck() async {
+    final user = await AuthService.instance.authStateChanges.first;
 
     if (!mounted) return;
 
-    final user = AuthService.instance.currentUser;
-
-    if (user != null) {
-      // User is already logged in — go straight to home.
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
+    if (user == null) {
       // No user — show login screen.
       Navigator.pushReplacementNamed(context, '/login');
+    } else if (!user.emailVerified) {
+      // Account exists but the email is not verified — send them to
+      // login, where signing in triggers the verification guide.
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      // Verified user — go straight to home.
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
