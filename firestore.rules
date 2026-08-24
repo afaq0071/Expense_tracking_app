@@ -1,17 +1,28 @@
 rules_version = '2';
 
-// Expense Tracker Firestore rules.
+// Expense Tracker Firestore rules — scalable owner-only access.
 //
-// Data layout (unchanged):
-//   users/{userId}                  → profile doc (name, email, createdAt)
-//   users/{userId}/expenses/{id}    → that user's income/expense entries
-//   users/{userId}/budgets/{id}     → that user's monthly budgets
+// Data layout:
+//   users/{userId}                        → profile doc (name, email, createdAt)
+//   users/{userId}/expenses/{id}          → that user's income/expense entries
+//   users/{userId}/budgets/{id}           → that user's monthly budgets
+//   users/{userId}/recurring_transactions/{id} → recurring transaction templates
+//   users/{userId}/wallets/{id}           → that user's wallets / accounts
+//   users/{userId}/savings_goals/{id}     → that user's savings goals
+//   users/{userId}/<any未来的collection>   → automatically covered
 //
 // Policy: a signed-in user may create, read, update and delete ONLY
 // their own documents. Everyone else (including anonymous requests)
-// is denied. Deploy with:
+// is denied.
+//
+// The recursive wildcard ({document=**}) below matches the user
+// profile document AND every subcollection beneath it — including
+// any future collections added without needing a rule update.
+//
+// Deploy with:
 //   firebase deploy --only firestore:rules
 // or paste into Firebase Console → Firestore Database → Rules.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -24,22 +35,23 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // ── Data rules ───────────────────────────────────────────────────
-    match /users/{userId} {
-      // Profile document: readable/writable only by its owner.
+    // ── User-scoped recursive rule ───────────────────────────────────
+    //
+    // The wildcard {document=**} matches:
+    //   users/{userId}                                  (profile doc)
+    //   users/{userId}/expenses/{expenseId}             (existing)
+    //   users/{userId}/budgets/{budgetId}               (existing)
+    //   users/{userId}/recurring_transactions/{id}      (existing)
+    //   users/{userId}/wallets/{walletId}               (existing)
+    //   users/{userId}/savings_goals/{goalId}           (existing)
+    //   users/{userId}/goals/{goalId}                   (future)
+    //   users/{userId}/any_collection/any_doc           (future)
+    //   users/{userId}/a/b/c/d/e                        (deeply nested future)
+    //
+    // Everything outside users/{userId}/... is denied by default
+    // (no explicit rule = no access).
+    match /users/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
-
-      // Per-user expense sub-collection.
-      match /expenses/{expenseId} {
-        allow read, write: if isOwner(userId);
-      }
-
-      // Per-user budget sub-collection.
-      match /budgets/{budgetId} {
-        allow read, write: if isOwner(userId);
-      }
     }
-
-    // Any other path is denied by default — no explicit rule = no access.
   }
 }

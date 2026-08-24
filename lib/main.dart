@@ -9,6 +9,13 @@ import 'screens/home_screen.dart';
 import 'screens/add_expense_screen.dart';
 import 'screens/budget_screen.dart';
 import 'screens/add_budget_screen.dart';
+import 'screens/recurring_transactions_screen.dart';
+import 'screens/add_recurring_screen.dart';
+import 'screens/savings_goals_screen.dart';
+import 'screens/add_edit_goal_screen.dart';
+import 'screens/notification_settings_screen.dart';
+import 'services/notification_service.dart';
+import 'services/notification_settings_service.dart';
 
 /// Entry point — initializes Firebase before running the app.
 void main() async {
@@ -17,6 +24,10 @@ void main() async {
 
   // Initialize Firebase (reads google-services.json automatically).
   await Firebase.initializeApp();
+
+  // Initialize local notifications and settings
+  await NotificationService.instance.init();
+  await NotificationSettingsService.instance.init();
 
   runApp(const MyApp());
 }
@@ -70,6 +81,12 @@ class MyApp extends StatelessWidget {
         '/add-expense': (context) => const AddExpenseScreen(),
         '/budgets': (context) => const BudgetScreen(expenses: []),
         '/add-budget': (context) => const AddBudgetScreen(),
+        '/recurring': (context) => const RecurringTransactionsScreen(),
+        '/add-recurring': (context) => const AddRecurringScreen(),
+        '/savings-goals': (context) => const SavingsGoalsScreen(),
+        '/add-goal': (context) => const AddEditGoalScreen(),
+        '/notification-settings': (context) =>
+            const NotificationSettingsScreen(),
       },
     );
   }

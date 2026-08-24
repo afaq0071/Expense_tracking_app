@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 ///
 /// Each entry has a title, amount, category, date, and type (income/expense).
 /// Supports JSON serialization for local storage persistence.
+/// If [recurringTemplateId] is set, this transaction was auto-generated
+/// from a recurring transaction template.
 class Expense {
   final String id;
   final String title;
@@ -11,6 +13,8 @@ class Expense {
   final String category;
   final DateTime date;
   final bool isExpense;
+  final String? recurringTemplateId;
+  final String? walletId;
 
   const Expense({
     required this.id,
@@ -19,6 +23,8 @@ class Expense {
     required this.category,
     required this.date,
     required this.isExpense,
+    this.recurringTemplateId,
+    this.walletId,
   });
 
   // ── Predefined categories ──────────────────────────────────────────
@@ -73,6 +79,9 @@ class Expense {
         'category': category,
         'date': date.toIso8601String(),
         'isExpense': isExpense,
+        if (recurringTemplateId != null)
+          'recurringTemplateId': recurringTemplateId,
+        if (walletId != null) 'walletId': walletId,
       };
 
   /// Create an [Expense] from a JSON map.
@@ -91,6 +100,8 @@ class Expense {
       category: json['category'] as String,
       date: parsedDate,
       isExpense: json['isExpense'] as bool,
+      recurringTemplateId: json['recurringTemplateId'] as String?,
+      walletId: json['walletId'] as String?,
     );
   }
 

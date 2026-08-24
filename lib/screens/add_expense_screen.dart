@@ -5,7 +5,9 @@ import 'package:uuid/uuid.dart';
 
 import '../constants/app_colors.dart';
 import '../models/expense_model.dart';
+import '../models/wallet_model.dart';
 import '../services/firestore_service.dart';
+import '../services/wallet_service.dart';
 
 /// Screen for adding a new expense or income entry.
 ///
@@ -44,7 +46,35 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   /// Selected transaction date (defaults to today).
   DateTime _selectedDate = DateTime.now();
 
+  /// Available wallets for the wallet picker.
+  List<Wallet> _wallets = [];
+
+  /// Selected wallet ID (null = no wallet / unassigned).
+  String? _selectedWalletId;
+
   // ── Lifecycle ──────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallets();
+  }
+
+  Future<void> _loadWallets() async {
+    try {
+      final wallets = await WalletService.instance.getWallets();
+      if (!mounted) return;
+      setState(() {
+        _wallets = wallets.where((w) => w.isActive).toList();
+        // Auto-select the first wallet if available.
+        if (_wallets.isNotEmpty && _selectedWalletId == null) {
+          _selectedWalletId = _wallets.first.id;
+        }
+      });
+    } catch (_) {
+      // Non-fatal: wallet picker simply won't appear.
+    }
+  }
 
   @override
   void dispose() {
@@ -129,6 +159,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         category: finalCategory,
         date: _selectedDate,
         isExpense: _isExpense,
+        walletId: _selectedWalletId,
       );
 
       // Save to Firestore.
@@ -276,6 +307,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
 
               const SizedBox(height: 24),
+
+              // ── Wallet picker ─────────────────────────────────
+              if (_wallets.isNotEmpty) ...[
+                Text(
+                  'Wallet',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildWalletPicker(),
+                const SizedBox(height: 24),
+              ],
 
               // ── Category label ───────────────────────────────────
               Text(
@@ -500,6 +546,116 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// Wallet picker dropdown.
+  Widget _buildWalletPicker() {
+    return GestureDetector(
+      onTap: _showWalletPicker,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppColors.inputFill,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.account_balance_wallet_outlined,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _selectedWalletName,
+                style: GoogleFonts.poppins(
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _selectedWalletName {
+    if (_selectedWalletId == null) return 'No wallet';
+    final match = _wallets.where((w) => w.id == _selectedWalletId);
+    return match.isNotEmpty ? match.first.name : 'No wallet';
+  }
+
+  void _showWalletPicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Wallet',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              title: Text(
+                'No wallet',
+                style: GoogleFonts.poppins(
+                  color: _selectedWalletId == null
+                      ? AppColors.primary
+                      : AppColors.textPrimary,
+                ),
+              ),
+              trailing: _selectedWalletId == null
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+              onTap: () {
+                setState(() => _selectedWalletId = null);
+                Navigator.pop(ctx);
+              },
+            ),
+            ..._wallets.map((wallet) => ListTile(
+                  leading: Icon(
+                    Wallet.iconFromName(wallet.iconName),
+                    color: AppColors.textSecondary,
+                  ),
+                  title: Text(
+                    wallet.name,
+                    style: GoogleFonts.poppins(
+                      color: _selectedWalletId == wallet.id
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  trailing: _selectedWalletId == wallet.id
+                      ? const Icon(Icons.check, color: AppColors.primary)
+                      : null,
+                  onTap: () {
+                    setState(() => _selectedWalletId = wallet.id);
+                    Navigator.pop(ctx);
+                  },
+                )),
+          ],
+        ),
+      ),
     );
   }
 

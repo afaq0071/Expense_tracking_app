@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/expense_model.dart';
 import '../services/auth_service.dart';
+import '../services/recurring_transaction_service.dart';
 
 /// Handles all Firestore persistence for [Expense] entries.
 ///
@@ -58,7 +59,15 @@ class FirestoreService {
   // ── Get all expenses ───────────────────────────────────────────────
 
   /// Returns all expenses for the current user, sorted newest first.
+  /// Before fetching, generates any due recurring transactions.
   Future<List<Expense>> getExpenses() async {
+    // Generate any due recurring transactions before loading.
+    try {
+      await RecurringTransactionService.instance.generateDueTransactions();
+    } catch (_) {
+      // Non-fatal: if recurring generation fails, still load existing expenses.
+    }
+
     final snapshot = await _expensesCol.orderBy('date', descending: true).get();
 
     return snapshot.docs

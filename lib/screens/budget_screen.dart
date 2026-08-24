@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_colors.dart';
 import '../models/budget_model.dart';
 import '../models/expense_model.dart';
 import '../services/budget_service.dart';
+import '../services/notification_service.dart';
+import '../services/notification_settings_service.dart';
 import 'add_budget_screen.dart';
 
 /// Screen displaying all budgets with spending progress.
@@ -40,6 +43,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           _budgets = budgets;
           _isLoading = false;
         });
+        _checkBudgetNotifications();
       }
     } catch (e) {
       if (mounted) {
@@ -57,6 +61,56 @@ class _BudgetScreenState extends State<BudgetScreen> {
             margin: const EdgeInsets.all(16),
           ),
         );
+      }
+    }
+  }
+
+  /// Checks each loaded budget and fires a notification if the budget
+  /// has reached the warning (80%) or exceeded (100%) threshold.
+  /// Uses SharedPreferences to ensure each alert fires at most once per
+  /// budget per calendar day.
+  void _checkBudgetNotifications() async {
+    final settings = NotificationSettingsService.instance;
+    final notifications = NotificationService.instance;
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10); // YYYY-MM-DD
+
+    for (final budget in _budgets) {
+      final spent = BudgetService.instance.calculateTotalSpent(
+        widget.expenses,
+        budget.month,
+        budget.year,
+      );
+      final percentage = BudgetService.instance.calculatePercentage(
+        spent,
+        budget.totalAmount,
+      );
+      final warningLevel = BudgetService.instance.getWarningLevel(percentage);
+
+      if (warningLevel == 1 && settings.budgetWarningEnabled) {
+        final dedupKey = 'budget_notif_${budget.id}_warning_$today';
+        if (prefs.getString(dedupKey) != today) {
+          await prefs.setString(dedupKey, today);
+          final pct = (percentage * 100).toStringAsFixed(0);
+          await notifications.showNotification(
+            id: NotificationService.budgetWarningId(budget.id),
+            title: 'Budget Warning',
+            body: '"${budget.name}" is at $pct% — approaching the limit.',
+          );
+        }
+      } else if (warningLevel == 2 && settings.budgetExceededEnabled) {
+        final dedupKey = 'budget_notif_${budget.id}_exceeded_$today';
+        if (prefs.getString(dedupKey) != today) {
+          await prefs.setString(dedupKey, today);
+          final spentStr = spent.toStringAsFixed(2);
+          final budgetStr = budget.totalAmount.toStringAsFixed(2);
+          await notifications.showNotification(
+            id: NotificationService.budgetExceededId(budget.id),
+            title: 'Budget Exceeded!',
+            body:
+                '"${budget.name}" has exceeded the budget — \$$spentStr spent from \$$budgetStr budget.',
+          );
+        }
       }
     }
   }
@@ -95,6 +149,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
     if (confirmed == true) {
       try {
+        // Cancel any pending notifications for this budget
+        await NotificationService.instance
+            .cancel(NotificationService.budgetWarningId(budget.id));
+        await NotificationService.instance
+            .cancel(NotificationService.budgetExceededId(budget.id));
         await BudgetService.instance.deleteBudget(budget.id);
         _loadBudgets();
       } catch (e) {
