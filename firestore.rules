@@ -41,6 +41,5 @@ service cloud.firestore {
     }
 
     // Any other path is denied by default — no explicit rule = no access.
-// Last tested: hook-verification
   }
 }
