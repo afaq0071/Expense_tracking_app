@@ -14,6 +14,7 @@ import 'recurring_transactions_screen.dart';
 import 'wallets_screen.dart';
 import 'savings_goals_screen.dart';
 import 'notification_settings_screen.dart';
+import 'export_screen.dart';
 
 /// Main dashboard screen showing balance summary and recent transactions.
 ///
@@ -425,6 +426,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── Navigate to export screen ─────────────────────────────────
+
+  void _goToExport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExportScreen(
+          expenses: _expenses,
+          wallets: _wallets,
+        ),
+      ),
+    );
+  }
+
   // ── Format currency ────────────────────────────────────────────────
 
   String _formatCurrency(double amount) {
@@ -579,6 +594,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildHeaderIcon(
                   onTap: _goToNotificationSettings,
                   icon: Icons.notifications_outlined,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToExport,
+                  icon: Icons.file_download_outlined,
                   color: AppColors.primary,
                 ),
                 const SizedBox(width: 12),
