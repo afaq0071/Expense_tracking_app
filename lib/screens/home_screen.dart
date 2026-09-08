@@ -16,11 +16,6 @@ import 'savings_goals_screen.dart';
 import 'notification_settings_screen.dart';
 import 'export_screen.dart';
 
-/// Main dashboard screen showing balance summary and recent transactions.
-///
-/// Loads all expenses from [FirestoreService] and refreshes when the
-/// screen becomes visible (e.g., after adding an entry).
-/// Shows the user's real name and provides a logout button.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -29,27 +24,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ── State ──────────────────────────────────────────────────────────
-
   List<Expense> _expenses = [];
   double _totalIncome = 0;
   double _totalExpenses = 0;
   double _balance = 0;
   String _userName = 'User';
   bool _isLoading = true;
-
-  // ── Wallet state ───────────────────────────────────────────────
   List<Wallet> _wallets = [];
-
-  /// Selected wallet ID — null means "All wallets".
   String? _selectedWalletId;
-
-  // ── Search state ─────────────────────────────────────────────────
+  int _bottomNavIndex = 0;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-
-  // ── Filter state ─────────────────────────────────────────────────
-  String _filterType = 'all'; // 'all', 'income', 'expense'
+  String _filterType = 'all';
   String? _filterCategory;
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
@@ -60,7 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _filterStartDate != null ||
       _filterEndDate != null;
 
-  /// Available categories derived from loaded expenses.
   List<String> get _availableCategories {
     final cats = <String>{};
     for (final e in _expenses) {
@@ -69,15 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return cats.toList()..sort();
   }
 
-  // ── Wallet-filtered expense list ──────────────────────────────────
-
-  /// Returns expenses filtered by the selected wallet (or all if none selected).
   List<Expense> get _walletExpenses {
     if (_selectedWalletId == null) return _expenses;
     return _expenses.where((e) => e.walletId == _selectedWalletId).toList();
   }
 
-  /// Balance for the currently selected wallet (or total if none selected).
   double get _displayBalance {
     if (_selectedWalletId == null) return _balance;
     return WalletService.instance.calculateBalance(
@@ -86,7 +67,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Income for the currently selected wallet.
   double get _displayIncome {
     if (_selectedWalletId == null) return _totalIncome;
     double income = 0;
@@ -96,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return income;
   }
 
-  /// Expenses for the currently selected wallet.
   double get _displayExpenses {
     if (_selectedWalletId == null) return _totalExpenses;
     double spent = 0;
@@ -106,9 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return spent;
   }
 
-  // ── Current-month statistics (computed from _expenses, no Firestore) ──
-
-  /// Expenses falling in the current calendar month.
   List<Expense> get _currentMonthExpenses {
     final now = DateTime.now();
     return _expenses.where((e) {
@@ -118,7 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
-  /// Income falling in the current calendar month.
   List<Expense> get _currentMonthIncome {
     final now = DateTime.now();
     return _expenses.where((e) {
@@ -137,7 +112,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double get _currentMonthSavings =>
       _currentMonthIncomeTotal - _currentMonthExpenseTotal;
 
-  /// Category → total amount for current-month expenses, sorted descending.
   List<MapEntry<String, double>> get _categoryBreakdown {
     final map = <String, double>{};
     for (final e in _currentMonthExpenses) {
@@ -148,12 +122,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return entries;
   }
 
-  /// Applies search + type + category + date range filters locally.
-  /// Also respects the wallet filter from _walletExpenses.
   List<Expense> get _filteredExpenses {
     var list = _walletExpenses;
-
-    // ── Search filter (case-insensitive on title / category) ──────
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
       list = list.where((e) {
@@ -161,25 +131,18 @@ class _HomeScreenState extends State<HomeScreen> {
             e.category.toLowerCase().contains(query);
       }).toList();
     }
-
-    // ── Type filter ───────────────────────────────────────────────
     if (_filterType == 'income') {
       list = list.where((e) => !e.isExpense).toList();
     } else if (_filterType == 'expense') {
       list = list.where((e) => e.isExpense).toList();
     }
-
-    // ── Category filter ───────────────────────────────────────────
     if (_filterCategory != null) {
       list = list.where((e) => e.category == _filterCategory).toList();
     }
-
-    // ── Date range filter ─────────────────────────────────────────
     if (_filterStartDate != null) {
       list = list.where((e) => !e.date.isBefore(_filterStartDate!)).toList();
     }
     if (_filterEndDate != null) {
-      // Include the entire end day.
       final endDay = DateTime(
         _filterEndDate!.year,
         _filterEndDate!.month,
@@ -187,27 +150,19 @@ class _HomeScreenState extends State<HomeScreen> {
       ).add(const Duration(days: 1));
       list = list.where((e) => e.date.isBefore(endDay)).toList();
     }
-
     return list;
   }
 
-  // ── Load data from Firestore ───────────────────────────────────────
-
   Future<void> _loadExpenses() async {
     try {
-      // Fetch user name, expenses, and wallets once; totals are computed
-      // locally from that single result instead of extra Firestore reads.
       final results = await Future.wait([
         FirestoreService.instance.getUserName(),
         FirestoreService.instance.getExpenses(),
         WalletService.instance.getWallets(),
       ]);
-
       if (!mounted) return;
-
       final expenses = results[1] as List<Expense>;
       final wallets = results[2] as List<Wallet>;
-
       double income = 0;
       double spent = 0;
       for (final e in expenses) {
@@ -217,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
           income += e.amount;
         }
       }
-
       setState(() {
         _userName = results[0] as String;
         _expenses = expenses;
@@ -228,8 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-
-      // Surface the real cause (auth, rules, network…) — not a vague message.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -239,12 +191,11 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor: AppColors.expense,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           margin: const EdgeInsets.all(16),
         ),
       );
     } finally {
-      // Never leave the spinner stuck after an error.
       if (mounted && _isLoading) {
         setState(() => _isLoading = false);
       }
@@ -263,14 +214,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // ── Delete handler ─────────────────────────────────────────────────
-
   Future<void> _deleteExpense(Expense expense) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Delete Entry',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -297,21 +245,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-
     if (confirmed == true) {
       await FirestoreService.instance.deleteExpense(expense.id);
       _loadExpenses();
     }
   }
 
-  // ── Logout handler ─────────────────────────────────────────────────
-
   Future<void> _handleLogout() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(
           'Log Out',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -338,14 +282,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-
-    // Only log out when the user confirms the dialog.
     if (confirmed != true) return;
-
     await AuthService.instance.logout();
-
     if (!mounted) return;
-
     Navigator.pushNamedAndRemoveUntil(
       context,
       '/login',
@@ -353,14 +292,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Navigate to add screen ─────────────────────────────────────────
-
   Future<void> _goToAddExpense() async {
     await Navigator.pushNamed(context, '/add-expense');
     _loadExpenses();
   }
-
-  // ── Navigate to analytics screen ──────────────────────────────────
 
   void _goToAnalytics() {
     Navigator.push(
@@ -371,8 +306,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Navigate to budget screen ─────────────────────────────────────
-
   void _goToBudgets() {
     Navigator.push(
       context,
@@ -381,8 +314,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // ── Navigate to recurring transactions screen ────────────────────
 
   void _goToRecurringTransactions() {
     Navigator.push(
@@ -393,8 +324,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Navigate to wallets screen ──────────────────────────────────
-
   void _goToWallets() {
     Navigator.push(
       context,
@@ -403,8 +332,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ).then((_) => _loadExpenses());
   }
-
-  // ── Navigate to savings goals screen ────────────────────────────
 
   void _goToSavingsGoals() {
     Navigator.push(
@@ -415,8 +342,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Navigate to notification settings ──────────────────────────
-
   void _goToNotificationSettings() {
     Navigator.push(
       context,
@@ -425,8 +350,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // ── Navigate to export screen ─────────────────────────────────
 
   void _goToExport() {
     Navigator.push(
@@ -440,13 +363,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Format currency ────────────────────────────────────────────────
-
   String _formatCurrency(double amount) {
     return '\$${amount.toStringAsFixed(2)}';
   }
-
-  // ── Filter helpers ─────────────────────────────────────────────────
 
   void _clearFilters() {
     setState(() {
@@ -494,13 +413,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                    children: [
                       _buildHeader(),
                       const SizedBox(height: 16),
                       _buildWalletSelector(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       _buildBalanceCard(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       _buildSummaryRow(),
                       const SizedBox(height: 24),
                       _buildMonthSummary(),
@@ -508,7 +427,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 24),
                         _buildCategoryBreakdown(),
                       ],
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 24),
                       _buildTransactionsSection(),
                       const SizedBox(height: 100),
                     ],
@@ -517,106 +436,53 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
       ),
       floatingActionButton: _buildFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  // ── Widget builders ──────────────────────────────────────────────
+  // ── Header ──────────────────────────────────────────────────────
 
-  /// Header with user greeting and action buttons.
-  ///
-  /// Layout is a Column so the greeting text is always full-width and
-  /// never squeezed by the icon buttons.  The icon row uses a
-  /// `SizedBox` with `clipBehavior` so it is safely constrained on
-  /// small screens while keeping every button tappable.
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          // ── Greeting text (full width, never squeezed) ──────────
-          Text(
-            'Hello $_userName 👋',
-            style: GoogleFonts.poppins(
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Welcome back',
-            style: GoogleFonts.poppins(
-              fontSize: 15,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // ── Action icons (horizontally scrollable) ─────────────
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.hardEdge,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeaderIcon(
-                  onTap: _goToWallets,
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: AppColors.accent,
+                Text(
+                  'Good Morning,',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToRecurringTransactions,
-                  icon: Icons.repeat,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToBudgets,
-                  icon: Icons.pie_chart_outline_rounded,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToAnalytics,
-                  icon: Icons.analytics_outlined,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToSavingsGoals,
-                  icon: Icons.savings_outlined,
-                  color: AppColors.income,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToNotificationSettings,
-                  icon: Icons.notifications_outlined,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _goToExport,
-                  icon: Icons.file_download_outlined,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                _buildHeaderIcon(
-                  onTap: _handleLogout,
-                  icon: Icons.logout_rounded,
-                  color: AppColors.expense,
+                const SizedBox(height: 2),
+                Text(
+                  _userName,
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
+          ),
+          _buildHeaderIcon(
+            onTap: _handleLogout,
+            icon: Icons.logout_rounded,
+            color: AppColors.textSecondary,
           ),
         ],
       ),
     );
   }
 
-  /// Reusable 48×48 icon button used in the header row.
   Widget _buildHeaderIcon({
     required VoidCallback onTap,
     required IconData icon,
@@ -625,28 +491,100 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(14),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: AppColors.softShadow,
         ),
-        child: Icon(icon, color: color, size: 22),
+        child: Icon(icon, color: color, size: 20),
       ),
     );
   }
 
-  /// Main balance card with gradient background.
+  // ── Wallet selector ─────────────────────────────────────────────
+
+  Widget _buildWalletSelector() {
+    if (_wallets.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 40,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        children: [
+          _buildWalletChip(
+            label: 'All',
+            icon: Icons.account_balance_wallet_outlined,
+            selected: _selectedWalletId == null,
+            onTap: () => setState(() => _selectedWalletId = null),
+          ),
+          const SizedBox(width: 8),
+          ..._wallets.map((wallet) => Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _buildWalletChip(
+                  label: wallet.name,
+                  icon: Wallet.iconFromName(wallet.iconName),
+                  selected: _selectedWalletId == wallet.id,
+                  onTap: () => setState(() => _selectedWalletId = wallet.id),
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWalletChip({
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? Colors.transparent : AppColors.inputBorder,
+          ),
+          boxShadow: selected ? AppColors.softShadow : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: selected ? Colors.white : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Balance card ────────────────────────────────────────────────
+
   Widget _buildBalanceCard() {
     final walletName = _selectedWalletId != null
-        ? (_wallets.where((w) => w.id == _selectedWalletId).map((w) => w.name).firstOrNull ?? 'All Wallets')
+        ? (_wallets
+                .where((w) => w.id == _selectedWalletId)
+                .map((w) => w.name)
+                .firstOrNull ??
+            'All Wallets')
         : 'All Wallets';
     final walletExpenses = _walletExpenses;
 
@@ -657,64 +595,102 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
               color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Row(
+            // ── Decorative bubbles inside the card ────────────────
+            Positioned(
+              top: -20,
+              right: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -30,
+              right: 40,
+              child: Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    color: Colors.white,
-                    size: 24,
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(
+                        Icons.account_balance_wallet_rounded,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      walletName,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Total Balance',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(height: 4),
                 Text(
-                  walletName,
+                  _formatCurrency(_displayBalance),
                   style: GoogleFonts.poppins(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  walletExpenses.isEmpty
+                      ? 'No transactions yet'
+                      : '${walletExpenses.length} transaction${walletExpenses.length == 1 ? '' : 's'} recorded',
+                  style: GoogleFonts.poppins(
+                    color: AppColors.accent,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 20),
-            Text(
-              _formatCurrency(_displayBalance),
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 34,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              walletExpenses.isEmpty
-                  ? 'No transactions yet'
-                  : '${walletExpenses.length} transaction${walletExpenses.length == 1 ? '' : 's'} recorded',
-              style: GoogleFonts.poppins(
-                color: AppColors.accent,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
             ),
           ],
         ),
@@ -722,7 +698,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Side-by-side income and expense summary cards.
+  // ── Summary row ─────────────────────────────────────────────────
+
   Widget _buildSummaryRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -732,40 +709,33 @@ class _HomeScreenState extends State<HomeScreen> {
             title: 'Income',
             amount: _formatCurrency(_displayIncome),
             icon: Icons.arrow_downward_rounded,
-            gradient: AppColors.incomeGradient,
+            color: AppColors.income,
           ),
           const SizedBox(width: 16),
           _buildSummaryCard(
             title: 'Expenses',
             amount: _formatCurrency(_displayExpenses),
             icon: Icons.arrow_upward_rounded,
-            gradient: AppColors.expenseGradient,
+            color: AppColors.expense,
           ),
         ],
       ),
     );
   }
 
-  /// Single summary card (used in the income/expense row).
   Widget _buildSummaryCard({
     required String title,
     required String amount,
     required IconData icon,
-    required LinearGradient gradient,
+    required Color color,
   }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: AppColors.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,10 +744,10 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: gradient,
-                borderRadius: BorderRadius.circular(12),
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 14),
             Text(
@@ -803,7 +773,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Current month summary — income, expenses, and savings.
+  // ── Month summary ───────────────────────────────────────────────
+
   Widget _buildMonthSummary() {
     final now = DateTime.now();
     final monthNames = [
@@ -857,7 +828,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Compact stat card used inside the month summary row.
   Widget _buildMonthStatCard({
     required String label,
     required String amount,
@@ -868,14 +838,8 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: AppColors.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -911,14 +875,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Placeholder when no data exists for the month summary.
   Widget _buildEmptyMonthCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 28),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: AppColors.softShadow,
       ),
       child: Text(
         'No data for this month yet',
@@ -931,7 +895,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Spending breakdown by category for the current month.
+  // ── Category breakdown ──────────────────────────────────────────
+
   Widget _buildCategoryBreakdown() {
     final breakdown = _categoryBreakdown;
     final total = _currentMonthExpenseTotal;
@@ -954,14 +919,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.cardShadow,
-                  blurRadius: 10,
-                  offset: Offset(0, 2),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: AppColors.softShadow,
             ),
             child: Column(
               children: [
@@ -969,16 +928,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   final pct = total > 0
                       ? (entry.value / total * 100).toStringAsFixed(1)
                       : '0';
+                  final fgColor = AppColors.categoryForeground(entry.key);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: Column(
                       children: [
                         Row(
                           children: [
-                            Icon(
-                              Expense.categoryIcon(entry.key),
-                              size: 18,
-                              color: AppColors.textSecondary,
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: AppColors.categoryBackground(entry.key),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Expense.categoryIcon(entry.key),
+                                size: 16,
+                                color: fgColor,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -1016,8 +984,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: LinearProgressIndicator(
                             value: total > 0 ? entry.value / total : 0,
                             backgroundColor: AppColors.inputFill,
-                            valueColor:
-                                const AlwaysStoppedAnimation(AppColors.primary),
+                            valueColor: AlwaysStoppedAnimation(fgColor),
                             minHeight: 5,
                           ),
                         ),
@@ -1033,81 +1000,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Horizontal scrollable wallet selector chips.
-  Widget _buildWalletSelector() {
-    if (_wallets.isEmpty) return const SizedBox.shrink();
+  // ── Transactions section ────────────────────────────────────────
 
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        children: [
-          // "All" chip
-          _buildWalletChip(
-            label: 'All',
-            icon: Icons.account_balance_wallet_outlined,
-            selected: _selectedWalletId == null,
-            onTap: () => setState(() => _selectedWalletId = null),
-          ),
-          const SizedBox(width: 8),
-          // Per-wallet chips
-          ..._wallets.map((wallet) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _buildWalletChip(
-                  label: wallet.name,
-                  icon: Wallet.iconFromName(wallet.iconName),
-                  selected: _selectedWalletId == wallet.id,
-                  onTap: () => setState(() => _selectedWalletId = wallet.id),
-                ),
-              )),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWalletChip({
-    required String label,
-    required IconData icon,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? Colors.transparent : AppColors.inputBorder,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 16,
-              color: selected ? Colors.white : AppColors.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.poppins(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: selected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Transaction list section with search, filters, and items.
   Widget _buildTransactionsSection() {
     final displayExpenses = _filteredExpenses;
     final isActive = _hasActiveFilters || _searchQuery.isNotEmpty;
@@ -1141,10 +1035,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-
           const SizedBox(height: 16),
-
-          // ── Search field ──────────────────────────────────────
           if (_expenses.isNotEmpty) ...[
             TextField(
               controller: _searchController,
@@ -1182,38 +1073,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                   borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(18),
                   borderSide:
                       const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-
-            // ── Type filter chips ───────────────────────────────
             _buildTypeFilterChips(),
             const SizedBox(height: 12),
-
-            // ── Category + Date range row ───────────────────────
             _buildCategoryAndDateRow(),
-
-            // ── Active filter summary + clear ───────────────────
             if (isActive) ...[
               const SizedBox(height: 12),
               _buildActiveFilterBar(displayExpenses.length),
             ],
-
             const SizedBox(height: 16),
           ],
-
           if (_expenses.isEmpty)
             _buildEmptyState()
           else if (displayExpenses.isEmpty)
@@ -1235,7 +1118,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Type filter chips: All / Income / Expense.
   Widget _buildTypeFilterChips() {
     return Row(
       children: [
@@ -1262,7 +1144,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Single filter chip.
   Widget _buildFilterChip({
     required String label,
     required bool selected,
@@ -1275,14 +1156,10 @@ class _HomeScreenState extends State<HomeScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: selected
-              ? (color ?? AppColors.primary)
-              : AppColors.surface,
+          color: selected ? (color ?? AppColors.primary) : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? Colors.transparent
-                : AppColors.inputBorder,
+            color: selected ? Colors.transparent : AppColors.inputBorder,
           ),
         ),
         child: Text(
@@ -1297,16 +1174,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Category dropdown + date range picker row.
   Widget _buildCategoryAndDateRow() {
     return Row(
       children: [
-        // ── Category dropdown ────────────────────────────────────
         Expanded(
           child: GestureDetector(
             onTap: _showCategoryPicker,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AppColors.inputFill,
                 borderRadius: BorderRadius.circular(14),
@@ -1341,14 +1217,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-
         const SizedBox(width: 10),
-
-        // ── Date range button ────────────────────────────────────
         GestureDetector(
           onTap: _pickDateRange,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               color: _filterStartDate != null
                   ? AppColors.primary.withValues(alpha: 0.1)
@@ -1382,13 +1256,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Shows a modal bottom sheet with category options.
   void _showCategoryPicker() {
     final categories = _availableCategories;
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -1445,7 +1318,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Active filter summary bar with clear button.
   Widget _buildActiveFilterBar(int count) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1487,21 +1359,29 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Empty state when there are no transactions.
   Widget _buildEmptyState() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 48),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.receipt_long_outlined,
-            size: 56,
-            color: AppColors.textSecondary.withValues(alpha: 0.4),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.receipt_long_outlined,
+              size: 36,
+              color: AppColors.primary.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1525,7 +1405,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Empty state when search returns no results.
   Widget _buildNoResultsState() {
     final hasFilters = _hasActiveFilters || _searchQuery.isNotEmpty;
     return Container(
@@ -1533,14 +1412,23 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 48),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 56,
-            color: AppColors.textSecondary.withValues(alpha: 0.4),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              size: 36,
+              color: AppColors.primary.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -1566,19 +1454,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Gradient floating action button.
+  // ── FAB ─────────────────────────────────────────────────────────
+
   Widget _buildFab() {
     return Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.35),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -1587,6 +1476,246 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         onPressed: _goToAddExpense,
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
+      ),
+    );
+  }
+
+  // ── Bottom navigation bar ───────────────────────────────────────
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(
+                index: 0,
+                icon: Icons.home_outlined,
+                activeIcon: Icons.home_rounded,
+                label: 'Home',
+              ),
+              _buildNavItem(
+                index: 1,
+                icon: Icons.receipt_long_outlined,
+                activeIcon: Icons.receipt_long_rounded,
+                label: 'Transactions',
+              ),
+              const SizedBox(width: 56),
+              _buildNavItem(
+                index: 2,
+                icon: Icons.analytics_outlined,
+                activeIcon: Icons.analytics_rounded,
+                label: 'Reports',
+              ),
+              _buildNavItem(
+                index: 3,
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                label: 'Profile',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+  }) {
+    final isSelected = _bottomNavIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _bottomNavIndex = index);
+        switch (index) {
+          case 1:
+            // Already on home, transactions are shown here
+            break;
+          case 2:
+            _goToAnalytics();
+            break;
+          case 3:
+            _showProfileMenu();
+            break;
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : icon,
+              color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showProfileMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.inputBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Menu',
+              style: GoogleFonts.poppins(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildMenuTile(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Wallets',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToWallets();
+              },
+            ),
+            _buildMenuTile(
+              icon: Icons.pie_chart_outline_rounded,
+              title: 'Budgets',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToBudgets();
+              },
+            ),
+            _buildMenuTile(
+              icon: Icons.savings_outlined,
+              title: 'Savings Goals',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToSavingsGoals();
+              },
+            ),
+            _buildMenuTile(
+              icon: Icons.repeat,
+              title: 'Recurring Transactions',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToRecurringTransactions();
+              },
+            ),
+            _buildMenuTile(
+              icon: Icons.file_download_outlined,
+              title: 'Export',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToExport();
+              },
+            ),
+            _buildMenuTile(
+              icon: Icons.notifications_outlined,
+              title: 'Notification Settings',
+              onTap: () {
+                Navigator.pop(ctx);
+                _goToNotificationSettings();
+              },
+            ),
+            const SizedBox(height: 8),
+            _buildMenuTile(
+              icon: Icons.logout_rounded,
+              title: 'Log Out',
+              color: AppColors.expense,
+              onTap: () {
+                Navigator.pop(ctx);
+                _handleLogout();
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return ListTile(
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: (color ?? AppColors.primary).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          icon,
+          color: color ?? AppColors.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          color: color ?? AppColors.textPrimary,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.textSecondary,
+        size: 22,
+      ),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }

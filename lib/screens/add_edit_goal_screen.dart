@@ -331,7 +331,7 @@ class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: AppColors.inputFill,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: Row(
                     children: [
@@ -424,25 +424,25 @@ class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide:
             const BorderSide(color: AppColors.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide:
             const BorderSide(color: AppColors.expense, width: 1),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         borderSide:
             const BorderSide(color: AppColors.expense, width: 1.5),
       ),
@@ -466,7 +466,7 @@ class _AddEditGoalScreenState extends State<AddEditGoalScreen> {
               color: isSelected
                   ? AppColors.primary.withValues(alpha: 0.15)
                   : AppColors.surface,
-              borderRadius: BorderRadius.circular(14),
+              shape: BoxShape.circle,
               border: Border.all(
                 color: isSelected ? AppColors.primary : AppColors.inputBorder,
                 width: isSelected ? 2 : 1,

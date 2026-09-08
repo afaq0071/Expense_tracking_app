@@ -188,14 +188,8 @@ class _WalletsScreenState extends State<WalletsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.softShadow,
       ),
       child: Row(
         children: [
@@ -207,7 +201,7 @@ class _WalletsScreenState extends State<WalletsScreen> {
               color: wallet.isActive
                   ? AppColors.primary.withValues(alpha: 0.1)
                   : AppColors.inputFill,
-              borderRadius: BorderRadius.circular(14),
+              shape: BoxShape.circle,
             ),
             child: Icon(
               Wallet.iconFromName(wallet.iconName),
@@ -377,7 +371,7 @@ class _WalletsScreenState extends State<WalletsScreen> {
       height: 60,
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.35),

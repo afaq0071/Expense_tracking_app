@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // ── ADDED: for FilteringTextInputFormatter
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,11 +9,6 @@ import '../models/wallet_model.dart';
 import '../services/firestore_service.dart';
 import '../services/wallet_service.dart';
 
-/// Screen for adding a new expense or income entry.
-///
-/// Contains a toggle to switch between expense/income mode,
-/// text fields for title and amount, a category picker, and
-/// a save button that persists the entry via [FirestoreService].
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
 
@@ -22,37 +17,17 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
-  // ── State ──────────────────────────────────────────────────────────
-
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
-
-  /// True = expense mode, false = income mode.
   bool _isExpense = true;
-
-  /// Currently selected category.
   String _selectedCategory = Expense.expenseCategories.first;
-
-  /// True while the entry is being saved to Firestore.
   bool _isSaving = false;
-
-  /// Shows the custom category text field when "Other" is selected.
   bool _showCustomCategory = false;
-
-  /// Controller for the custom category text field.
   final _customCategoryController = TextEditingController();
-
-  /// Selected transaction date (defaults to today).
   DateTime _selectedDate = DateTime.now();
-
-  /// Available wallets for the wallet picker.
   List<Wallet> _wallets = [];
-
-  /// Selected wallet ID (null = no wallet / unassigned).
   String? _selectedWalletId;
-
-  // ── Lifecycle ──────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -66,14 +41,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       if (!mounted) return;
       setState(() {
         _wallets = wallets.where((w) => w.isActive).toList();
-        // Auto-select the first wallet if available.
         if (_wallets.isNotEmpty && _selectedWalletId == null) {
           _selectedWalletId = _wallets.first.id;
         }
       });
-    } catch (_) {
-      // Non-fatal: wallet picker simply won't appear.
-    }
+    } catch (_) {}
   }
 
   @override
@@ -84,33 +56,25 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     super.dispose();
   }
 
-  // ── Category list based on mode ────────────────────────────────────
-
   List<String> get _categories =>
       _isExpense ? Expense.expenseCategories : Expense.incomeCategories;
-
-  // ── Date helpers ───────────────────────────────────────────────────
 
   static const _monthNames = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
-  /// Formats the selected date for display in the picker field.
   String _formatSelectedDate() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final dateOnly =
         DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     final diff = today.difference(dateOnly).inDays;
-
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
-
     return '${_selectedDate.day} ${_monthNames[_selectedDate.month - 1]} ${_selectedDate.year}';
   }
 
-  /// Opens the Material date picker and updates [_selectedDate].
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -123,35 +87,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  // ── Save handler ───────────────────────────────────────────────────
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Determine the final category string.
     final String finalCategory;
     if (_selectedCategory == 'Other') {
       finalCategory = _customCategoryController.text.trim();
-      if (finalCategory.isEmpty) {
-        // Safety fallback (form validation should catch this).
-        return;
-      }
+      if (finalCategory.isEmpty) return;
     } else {
       finalCategory = _selectedCategory;
     }
-
     setState(() => _isSaving = true);
-
     bool success = false;
-
     try {
-      // Generate a unique ID using the uuid package.
       final id = const Uuid().v4();
-
-      // Parse the amount from the text field.
       final amount = double.parse(_amountController.text.trim());
-
-      // Create the expense object.
       final expense = Expense(
         id: id,
         title: _titleController.text.trim(),
@@ -161,14 +110,10 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         isExpense: _isExpense,
         walletId: _selectedWalletId,
       );
-
-      // Save to Firestore.
       await FirestoreService.instance.addExpense(expense);
       success = true;
     } catch (e) {
       if (!mounted) return;
-
-      // Surface the real cause (auth, rules, network…) — not a vague message.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -178,22 +123,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           backgroundColor: AppColors.expense,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           margin: const EdgeInsets.all(16),
         ),
       );
     } finally {
-      // Re-enable the save button so the user can retry after a failure.
       if (mounted && !success) {
         setState(() => _isSaving = false);
       }
     }
-
-    // Go back to the previous screen (home), which reloads on return.
     if (success && mounted) Navigator.pop(context);
   }
-
-  // ── Build ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -216,12 +156,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Expense / Income toggle ──────────────────────────
               _buildToggle(),
-
               const SizedBox(height: 32),
-
-              // ── Title field ──────────────────────────────────────
               _buildTextField(
                 controller: _titleController,
                 hint: 'Title (e.g., Groceries)',
@@ -233,38 +169,9 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   return null;
                 },
               ),
-
               const SizedBox(height: 16),
-
-              // ── Amount field ─────────────────────────────────────
-              _buildTextField(
-                controller: _amountController,
-                hint: 'Amount',
-                icon: Icons.attach_money_rounded,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                // ── ADDED: only allow digits and one decimal point ──
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-                ],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter an amount';
-                  }
-                  if (double.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  if (double.parse(value) <= 0) {
-                    return 'Amount must be greater than zero';
-                  }
-                  return null;
-                },
-              ),
-
+              _buildAmountField(),
               const SizedBox(height: 24),
-
-              // ── Date picker ───────────────────────────────────
               Text(
                 'Date',
                 style: GoogleFonts.poppins(
@@ -273,9 +180,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-
               const SizedBox(height: 12),
-
               GestureDetector(
                 onTap: _pickDate,
                 child: Container(
@@ -284,7 +189,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: AppColors.inputFill,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: Row(
                     children: [
@@ -305,10 +210,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 24),
-
-              // ── Wallet picker ─────────────────────────────────
               if (_wallets.isNotEmpty) ...[
                 Text(
                   'Wallet',
@@ -322,8 +224,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 _buildWalletPicker(),
                 const SizedBox(height: 24),
               ],
-
-              // ── Category label ───────────────────────────────────
               Text(
                 'Category',
                 style: GoogleFonts.poppins(
@@ -332,13 +232,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   color: AppColors.textPrimary,
                 ),
               ),
-
               const SizedBox(height: 12),
-
-              // ── Category chips ──────────────────────────────────
-              _buildCategoryChips(),
-
-              // ── Custom category field (shown when "Other" is selected) ──
+              _buildCategoryBubbles(),
               if (_showCustomCategory) ...[
                 const SizedBox(height: 12),
                 _buildTextField(
@@ -353,42 +248,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   },
                 ),
               ],
-
               const SizedBox(height: 40),
-
-              // ── Save button ─────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _isExpense ? AppColors.expense : AppColors.income,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  onPressed: _isSaving ? null : _save,
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : Text(
-                    'Save ${_isExpense ? 'Expense' : 'Income'}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              _buildSaveButton(),
             ],
           ),
         ),
@@ -396,19 +257,15 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  // ── Widget builders ──────────────────────────────────────────────
-
-  /// Toggle between Expense and Income mode.
   Widget _buildToggle() {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AppColors.inputFill,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         children: [
-          // Expense tab
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -419,11 +276,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   _customCategoryController.clear();
                 });
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: _isExpense ? AppColors.expense : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -431,7 +289,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     Icon(
                       Icons.arrow_upward_rounded,
                       size: 18,
-                      color: _isExpense ? Colors.white : AppColors.textSecondary,
+                      color:
+                          _isExpense ? Colors.white : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -439,7 +298,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: _isExpense ? Colors.white : AppColors.textSecondary,
+                        color:
+                            _isExpense ? Colors.white : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -447,7 +307,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               ),
             ),
           ),
-          // Income tab
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -458,11 +317,12 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   _customCategoryController.clear();
                 });
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
                   color: !_isExpense ? AppColors.income : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -470,7 +330,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     Icon(
                       Icons.arrow_downward_rounded,
                       size: 18,
-                      color: !_isExpense ? Colors.white : AppColors.textSecondary,
+                      color:
+                          !_isExpense ? Colors.white : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -478,7 +339,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: !_isExpense ? Colors.white : AppColors.textSecondary,
+                        color:
+                            !_isExpense ? Colors.white : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -491,13 +353,79 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  /// Scrollable row of category chips.
-  Widget _buildCategoryChips() {
+  Widget _buildAmountField() {
+    return TextFormField(
+      controller: _amountController,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+      ],
+      style: GoogleFonts.poppins(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+      decoration: InputDecoration(
+        prefixText: '\$ ',
+        prefixStyle: GoogleFonts.poppins(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textSecondary,
+        ),
+        hintText: '0.00',
+        hintStyle: GoogleFonts.poppins(
+          color: AppColors.textSecondary.withValues(alpha: 0.5),
+          fontSize: 28,
+        ),
+        filled: true,
+        fillColor: AppColors.inputFill,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1.5),
+        ),
+        errorStyle: GoogleFonts.poppins(fontSize: 12),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter an amount';
+        }
+        if (double.tryParse(value) == null) {
+          return 'Please enter a valid number';
+        }
+        if (double.parse(value) <= 0) {
+          return 'Amount must be greater than zero';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCategoryBubbles() {
     return Wrap(
-      spacing: 10,
-      runSpacing: 10,
+      spacing: 12,
+      runSpacing: 12,
       children: _categories.map((cat) {
         final isSelected = cat == _selectedCategory;
+        final bgColor = AppColors.categoryBackground(cat);
+        final fgColor = AppColors.categoryForeground(cat);
         return GestureDetector(
           onTap: () {
             setState(() {
@@ -512,17 +440,23 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? (_isExpense ? AppColors.expense : AppColors.income)
-                  : AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              color: isSelected ? fgColor : bgColor,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isSelected
-                    ? Colors.transparent
-                    : AppColors.inputBorder,
+                color: isSelected ? fgColor : Colors.transparent,
+                width: 2,
               ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: fgColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -530,7 +464,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                 Icon(
                   Expense.categoryIcon(cat),
                   size: 18,
-                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  color: isSelected ? Colors.white : fgColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -538,7 +472,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                   style: GoogleFonts.poppins(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                    color: isSelected ? Colors.white : fgColor,
                   ),
                 ),
               ],
@@ -549,7 +483,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  /// Wallet picker dropdown.
   Widget _buildWalletPicker() {
     return GestureDetector(
       onTap: _showWalletPicker,
@@ -558,7 +491,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: AppColors.inputFill,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
           children: [
@@ -598,7 +531,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.all(20),
@@ -659,20 +592,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     );
   }
 
-  /// Styled text field matching the login screen design.
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     TextInputType? keyboardType,
-    // ── ADDED: optional input formatters parameter ──
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      inputFormatters: inputFormatters, // ── CHANGED: pass through formatters
+      inputFormatters: inputFormatters,
       validator: validator,
       style: GoogleFonts.poppins(
         fontSize: 15,
@@ -690,29 +621,61 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppColors.expense, width: 1),
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppColors.expense, width: 1.5),
+          borderRadius: BorderRadius.circular(18),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1.5),
         ),
         errorStyle: GoogleFonts.poppins(fontSize: 12),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              _isExpense ? AppColors.expense : AppColors.income,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        onPressed: _isSaving ? null : _save,
+        child: _isSaving
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
+              )
+            : Text(
+                'Save ${_isExpense ? 'Expense' : 'Income'}',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

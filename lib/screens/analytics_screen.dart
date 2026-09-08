@@ -6,10 +6,6 @@ import '../constants/app_colors.dart';
 import '../models/expense_model.dart';
 import '../services/analytics_service.dart';
 
-/// Analytics screen displaying charts and insights from transaction data.
-///
-/// All data is computed locally from the provided [expenses] list.
-/// No additional Firestore reads are performed.
 class AnalyticsScreen extends StatefulWidget {
   final List<Expense> expenses;
 
@@ -66,10 +62,18 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.analytics_outlined,
-            size: 80,
-            color: AppColors.textSecondary.withValues(alpha: 0.4),
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.analytics_outlined,
+              size: 48,
+              color: AppColors.primary.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 20),
           Text(
@@ -93,13 +97,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  /// Current month income/expense/savings summary cards
   Widget _buildCurrentMonthSummary() {
     final summary = AnalyticsService.getCurrentMonthSummary(widget.expenses);
     final income = summary['income'] ?? 0;
     final expense = summary['expense'] ?? 0;
     final savings = summary['savings'] ?? 0;
-
     final now = DateTime.now();
     final monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -157,14 +159,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: AppColors.softShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,8 +169,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 18),
             ),
@@ -205,10 +201,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  /// Monthly Income vs Expense bar chart
   Widget _buildMonthlyComparisonChart() {
     final data = AnalyticsService.getLast6MonthsData(widget.expenses);
-
     return _buildChartCard(
       title: 'Income vs Expenses',
       subtitle: 'Last 6 months',
@@ -307,7 +301,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     color: AppColors.income,
                     width: 12,
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
+                      top: Radius.circular(6),
                     ),
                   ),
                   BarChartRodData(
@@ -315,7 +309,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     color: AppColors.expense,
                     width: 12,
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
+                      top: Radius.circular(6),
                     ),
                   ),
                 ],
@@ -336,11 +330,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     return max > 0 ? max : 100;
   }
 
-  /// Expense breakdown by category pie chart
   Widget _buildCategoryBreakdownChart() {
-    final data = AnalyticsService.getCurrentMonthCategoryBreakdown(
-        widget.expenses);
-
+    final data =
+        AnalyticsService.getCurrentMonthCategoryBreakdown(widget.expenses);
     if (data.isEmpty) {
       return _buildChartCard(
         title: 'Expense Breakdown',
@@ -359,7 +351,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         ),
       );
     }
-
     return _buildChartCard(
       title: 'Expense Breakdown',
       subtitle: 'Current month by category',
@@ -369,14 +360,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             height: 200,
             child: PieChart(
               PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 40,
+                sectionsSpace: 3,
+                centerSpaceRadius: 45,
                 sections: data.map((item) {
                   return PieChartSectionData(
                     value: item.amount,
                     title: '${item.percentage.toStringAsFixed(0)}%',
                     color: AppColors.chartPalette[item.colorIndex],
-                    radius: 50,
+                    radius: 55,
                     titleStyle: GoogleFonts.poppins(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -400,7 +391,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     height: 12,
                     decoration: BoxDecoration(
                       color: AppColors.chartPalette[item.colorIndex],
-                      borderRadius: BorderRadius.circular(3),
+                      shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -429,10 +420,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  /// Last 6 months trend line chart
   Widget _buildLast6MonthsTrend() {
     final data = AnalyticsService.getLast6MonthsData(widget.expenses);
-
     return _buildChartCard(
       title: '6-Month Trend',
       subtitle: 'Income & expenses over time',
@@ -572,7 +561,6 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  /// Reusable chart card wrapper
   Widget _buildChartCard({
     required String title,
     required String subtitle,
@@ -582,14 +570,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.softShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

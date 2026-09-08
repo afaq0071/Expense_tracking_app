@@ -274,14 +274,8 @@ class _RecurringTransactionsScreenState
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.cardShadow,
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: AppColors.softShadow,
         ),
         child: Row(
           children: [
@@ -291,7 +285,7 @@ class _RecurringTransactionsScreenState
               height: 48,
               decoration: BoxDecoration(
                 color: bgColor,
-                borderRadius: BorderRadius.circular(14),
+                shape: BoxShape.circle,
               ),
               child: Icon(
                 Expense.categoryIcon(template.category),

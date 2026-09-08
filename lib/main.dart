@@ -17,18 +17,11 @@ import 'screens/notification_settings_screen.dart';
 import 'services/notification_service.dart';
 import 'services/notification_settings_service.dart';
 
-/// Entry point — initializes Firebase before running the app.
 void main() async {
-  // Ensures Flutter bindings are initialized before Firebase.
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Firebase (reads google-services.json automatically).
   await Firebase.initializeApp();
-
-  // Initialize local notifications and settings
   await NotificationService.instance.init();
   await NotificationSettingsService.instance.init();
-
   runApp(const MyApp());
 }
 
@@ -51,7 +44,10 @@ class MyApp extends StatelessWidget {
           onSecondary: Colors.white,
           onSurface: AppColors.textPrimary,
         ),
-        textTheme: GoogleFonts.poppinsTextTheme(),
+        textTheme: GoogleFonts.poppinsTextTheme().apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        ),
         appBarTheme: AppBarTheme(
           backgroundColor: AppColors.background,
           foregroundColor: AppColors.textPrimary,
@@ -67,14 +63,27 @@ class MyApp extends StatelessWidget {
           color: AppColors.surface,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
           ),
         ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        dialogTheme: DialogThemeData(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+          },
+        ),
       ),
-
-      // Splash screen handles the initial auth check and routing.
       home: const SplashScreen(),
-
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),

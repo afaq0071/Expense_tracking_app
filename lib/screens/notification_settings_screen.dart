@@ -232,7 +232,7 @@ class _NotificationSettingsScreenState
           height: 40,
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
+            shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 22),
         ),
@@ -275,14 +275,8 @@ class _NotificationSettingsScreenState
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.cardShadow,
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: AppColors.softShadow,
       ),
       child: Row(
         children: [

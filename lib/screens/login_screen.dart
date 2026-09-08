@@ -6,11 +6,6 @@ import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
 import '../utils/validators.dart';
 
-/// Login and Signup screen with tab toggle.
-///
-/// Switches between a Login form (email + password) and a Signup form
-/// (name + email + password). Both call [AuthService] and show errors
-/// via SnackBar. Navigates to /home on success.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,28 +13,20 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  // ── Form keys (separate for login and signup) ──────────────────────
-
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _loginFormKey = GlobalKey<FormState>();
   final _signupFormKey = GlobalKey<FormState>();
-
-  // ── Controllers ────────────────────────────────────────────────────
-
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  // ── UI state ───────────────────────────────────────────────────────
-
-  bool _isLogin = true; // true = login tab, false = signup tab
+  bool _isLogin = true;
   bool _obscurePassword = true;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    // Clear all fields when the screen is freshly built.
     _clearControllers();
   }
 
@@ -51,63 +38,42 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Resets every controller so no old data persists.
   void _clearControllers() {
     _nameController.clear();
     _emailController.clear();
     _passwordController.clear();
   }
 
-  // ── Auth handlers ──────────────────────────────────────────────────
-
   Future<void> _handleLogin() async {
     if (!_loginFormKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
-
     final error = await AuthService.instance.login(
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
-
     if (!mounted) return;
-
     if (error != null) {
       setState(() => _isLoading = false);
       _showError(error);
       return;
     }
-
-    // ── Email verification check ────────────────────────────────────
-    // Credentials are valid; make sure the address is verified before
-    // entering the app.
     final user = AuthService.instance.currentUser;
     if (user != null && !user.emailVerified) {
       final verified = await _showVerificationGate(user);
       if (!mounted) return;
-
       setState(() => _isLoading = false);
-
       if (verified) {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        // Still unverified — sign back out and stay on the login screen.
         await AuthService.instance.logout();
       }
       return;
     }
-
     if (!mounted) return;
-
     setState(() => _isLoading = false);
     Navigator.pushReplacementNamed(context, '/home');
   }
 
-  /// Blocks login until the account email is verified.
-  ///
-  /// Shows a dialog that lets the user resend the link or confirm once
-  /// they have clicked it (re-checks via [User.reload]).
-  /// Returns true when the email ends up verified, false otherwise.
   Future<bool> _showVerificationGate(User user) async {
     final result = await showDialog<bool>(
       context: context,
@@ -116,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
         canPop: false,
         child: AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text(
             'Verify Your Email',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
@@ -144,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         error == null ? AppColors.income : AppColors.expense,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     margin: const EdgeInsets.all(16),
                   ),
@@ -157,8 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             TextButton(
               onPressed: () async {
-                // Re-read the profile from Firebase to pick up the
-                // latest verified flag.
                 await user.reload();
                 final refreshed = AuthService.instance.currentUser;
                 if (ctx.mounted) {
@@ -182,24 +146,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleSignUp() async {
     if (!_signupFormKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
-
     final error = await AuthService.instance.signUp(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
       password: _passwordController.text,
     );
-
     if (!mounted) return;
-
     setState(() => _isLoading = false);
-
     if (error != null) {
       _showError(error);
     } else if (mounted) {
-      // Account created and a verification link was sent — guide the
-      // user to verify before logging in instead of entering the app.
       setState(() {
         _isLogin = true;
         _clearControllers();
@@ -215,7 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppColors.income,
           behavior: SnackBarBehavior.floating,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           margin: const EdgeInsets.all(16),
           duration: const Duration(seconds: 5),
         ),
@@ -229,13 +186,11 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Text(message, style: GoogleFonts.poppins()),
         backgroundColor: AppColors.expense,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.all(16),
       ),
     );
   }
-
-  // ── Build ──────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -244,108 +199,125 @@ class _LoginScreenState extends State<LoginScreen> {
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              children: [
-                const SizedBox(height: 50),
-
-                // ── Header text ────────────────────────────────────
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _isLogin ? 'Welcome\nBack' : 'Create\nAccount',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontSize: 34,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
-                  ),
+        child: Stack(
+          children: [
+            // ── Decorative bubbles ────────────────────────────────
+            Positioned(
+              top: -60,
+              right: -40,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.06),
                 ),
-
-                const SizedBox(height: 8),
-
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _isLogin
-                        ? 'Log in to continue tracking expenses'
-                        : 'Sign up to start tracking your expenses',
-                    style: GoogleFonts.poppins(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
+              ),
+            ),
+            Positioned(
+              bottom: 100,
+              left: -50,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
+              ),
+            ),
 
-                const SizedBox(height: 40),
-
-                // ── White card ─────────────────────────────────────
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 30,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: _isLogin ? _buildLoginForm() : _buildSignupForm(),
-                ),
-
-                const SizedBox(height: 24),
-
-                // ── Toggle link ────────────────────────────────────
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
                   children: [
-                    Text(
-                      _isLogin
-                          ? "Don't have an account? "
-                          : 'Already have an account? ',
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _isLogin = !_isLogin;
-                          _clearControllers(); // prevent stale data showing
-                          _obscurePassword = true;
-                        });
-                      },
+                    const SizedBox(height: 50),
+                    Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
-                        _isLogin ? 'Sign up' : 'Log in',
+                        _isLogin ? 'Welcome\nBack' : 'Create\nAccount',
                         style: GoogleFonts.poppins(
                           color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
                         ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        _isLogin
+                            ? 'Log in to continue tracking expenses'
+                            : 'Sign up to start tracking your expenses',
+                        style: GoogleFonts.poppins(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(28),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(28),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 30,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
+                      ),
+                      child: _isLogin ? _buildLoginForm() : _buildSignupForm(),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isLogin
+                              ? "Don't have an account? "
+                              : 'Already have an account? ',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isLogin = !_isLogin;
+                              _clearControllers();
+                              _obscurePassword = true;
+                            });
+                          },
+                          child: Text(
+                            _isLogin ? 'Sign up' : 'Log in',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
                   ],
                 ),
-
-                const SizedBox(height: 40),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
-
-  // ── Login form ─────────────────────────────────────────────────────
 
   Widget _buildLoginForm() {
     return Form(
@@ -361,70 +333,29 @@ class _LoginScreenState extends State<LoginScreen> {
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 24),
-
           _buildTextField(
             controller: _emailController,
             hint: 'Email address',
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            // ── CHANGED: shared validator with modern-TLD support ──
             validator: Validators.validateEmail,
           ),
-
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _passwordController,
             hint: 'Password',
             icon: Icons.lock_outline_rounded,
             obscure: _obscurePassword,
             suffixIcon: _buildVisibilityToggle(),
-            // ── CHANGED: login only requires a non-empty password;
-            // strength rules apply to signup, not to existing accounts. ──
             validator: Validators.validateRequiredPassword,
           ),
-
           const SizedBox(height: 32),
-
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: _isLoading ? null : _handleLogin,
-              child: _isLoading
-                  ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2.5,
-                ),
-              )
-                  : Text(
-                'Log In',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
+          _buildSubmitButton('Log In', _handleLogin),
         ],
       ),
     );
   }
-
-  // ── Signup form ────────────────────────────────────────────────────
 
   Widget _buildSignupForm() {
     return Form(
@@ -440,56 +371,53 @@ class _LoginScreenState extends State<LoginScreen> {
               color: AppColors.textPrimary,
             ),
           ),
-
           const SizedBox(height: 24),
-
           _buildTextField(
             controller: _nameController,
             hint: 'Full name',
             icon: Icons.person_outline_rounded,
             validator: Validators.validateName,
           ),
-
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _emailController,
             hint: 'Email address',
             icon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            // ── CHANGED: shared validator with modern-TLD support ──
             validator: Validators.validateEmail,
           ),
-
           const SizedBox(height: 16),
-
           _buildTextField(
             controller: _passwordController,
             hint: 'Password',
             icon: Icons.lock_outline_rounded,
             obscure: _obscurePassword,
             suffixIcon: _buildVisibilityToggle(),
-            // ── CHANGED: strong password validation (signup only) ──
             validator: Validators.validateStrongPassword,
           ),
-
           const SizedBox(height: 32),
+          _buildSubmitButton('Sign Up', _handleSignUp),
+        ],
+      ),
+    );
+  }
 
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              onPressed: _isLoading ? null : _handleSignUp,
-              child: _isLoading
-                  ? const SizedBox(
+  Widget _buildSubmitButton(String label, VoidCallback onPressed) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        onPressed: _isLoading ? null : onPressed,
+        child: _isLoading
+            ? const SizedBox(
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
@@ -497,23 +425,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   strokeWidth: 2.5,
                 ),
               )
-                  : Text(
-                'Sign Up',
+            : Text(
+                label,
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  // ── Reusable widgets ───────────────────────────────────────────────
-
-  /// Password visibility toggle icon button.
   Widget _buildVisibilityToggle() {
     return IconButton(
       icon: Icon(
@@ -527,7 +449,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Styled text field matching the app design system.
   Widget _buildTextField({
     required TextEditingController controller,
     required String hint,
@@ -560,29 +481,26 @@ class _LoginScreenState extends State<LoginScreen> {
         filled: true,
         fillColor: AppColors.inputFill,
         contentPadding:
-        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-          const BorderSide(color: AppColors.primary, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-          const BorderSide(color: AppColors.expense, width: 1),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-          const BorderSide(color: AppColors.expense, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.expense, width: 1.5),
         ),
         errorStyle: GoogleFonts.poppins(fontSize: 12),
       ),
