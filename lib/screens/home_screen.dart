@@ -502,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           SizedBox(
-            height: 48,
+            height: 64,
             child: ListView(
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.hardEdge,
@@ -511,42 +511,49 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: _goToWallets,
                   icon: Icons.account_balance_wallet_outlined,
                   color: AppColors.accent,
+                  label: 'Wallets',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToRecurringTransactions,
                   icon: Icons.repeat,
                   color: AppColors.primary,
+                  label: 'Recurring',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToBudgets,
                   icon: Icons.pie_chart_outline_rounded,
                   color: AppColors.primary,
+                  label: 'Budget',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToAnalytics,
                   icon: Icons.bar_chart_rounded,
                   color: AppColors.secondary,
+                  label: 'Reports',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToSavingsGoals,
                   icon: Icons.savings_outlined,
                   color: AppColors.primary,
+                  label: 'Savings',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToNotificationSettings,
                   icon: Icons.notifications_outlined,
                   color: AppColors.textSecondary,
+                  label: 'Alerts',
                 ),
                 const SizedBox(width: 12),
                 _buildHeaderIcon(
                   onTap: _goToExport,
                   icon: Icons.file_download_outlined,
                   color: AppColors.textSecondary,
+                  label: 'Export',
                 ),
               ],
             ),
@@ -560,18 +567,41 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onTap,
     required IconData icon,
     required Color color,
+    String? label,
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: AppColors.softShadow,
+      child: SizedBox(
+        width: 52,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: AppColors.softShadow,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            if (label != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ],
         ),
-        child: Icon(icon, color: color, size: 20),
       ),
     );
   }
@@ -1569,7 +1599,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Row(
             children: [
               Expanded(
@@ -1588,7 +1618,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   label: 'Transactions',
                 ),
               ),
-              const SizedBox(width: 48),
+              const SizedBox(width: 40),
               Expanded(
                 child: _buildNavItem(
                   index: 2,
@@ -1639,7 +1669,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
