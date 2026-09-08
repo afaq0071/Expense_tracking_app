@@ -14,6 +14,7 @@ import 'screens/add_recurring_screen.dart';
 import 'screens/savings_goals_screen.dart';
 import 'screens/add_edit_goal_screen.dart';
 import 'screens/notification_settings_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 import 'services/notification_settings_service.dart';
 
@@ -96,6 +97,7 @@ class MyApp extends StatelessWidget {
         '/add-goal': (context) => const AddEditGoalScreen(),
         '/notification-settings': (context) =>
             const NotificationSettingsScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }

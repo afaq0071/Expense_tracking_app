@@ -5,6 +5,8 @@ import '../constants/app_colors.dart';
 import '../models/expense_model.dart';
 import '../models/wallet_model.dart';
 import '../services/export_service.dart';
+import '../services/firestore_service.dart';
+import '../services/wallet_service.dart';
 
 /// Screen for exporting transactions as CSV or PDF monthly report.
 ///
@@ -28,23 +30,50 @@ class _ExportScreenState extends State<ExportScreen> {
   late DateTime _startDate;
   late DateTime _endDate;
   bool _isExporting = false;
+  List<Expense> _expenses = [];
+  List<Wallet> _wallets = [];
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _expenses = widget.expenses;
+    _wallets = widget.wallets;
     final now = DateTime.now();
     _startDate = DateTime(now.year, now.month, 1);
-    _endDate = DateTime(now.year, now.month + 1, 0); // last day of month
+    _endDate = DateTime(now.year, now.month + 1, 0);
+    if (_expenses.isEmpty) {
+      _loadData();
+    }
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        FirestoreService.instance.getExpenses(),
+        WalletService.instance.getWallets(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _expenses = results[0] as List<Expense>;
+          _wallets = results[1] as List<Wallet>;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   // ── Derived data ────────────────────────────────────────────────
 
   Map<String, String> get _walletMap =>
-      {for (final w in widget.wallets) w.id: w.name};
+      {for (final w in _wallets) w.id: w.name};
 
   List<Expense> get _filtered =>
       ExportService.instance.filterByDateRange(
-        widget.expenses,
+        _expenses,
         _startDate,
         _endDate,
       );
@@ -172,7 +201,11 @@ class _ExportScreenState extends State<ExportScreen> {
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
         ),
       ),
-      body: _isExporting
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
+          : _isExporting
           ? const Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

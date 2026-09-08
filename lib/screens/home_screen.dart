@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/wallet_service.dart';
 import '../widgets/expense_card.dart';
+import '../widgets/fade_slide_in.dart';
 import 'analytics_screen.dart';
 import 'budget_screen.dart';
 import 'recurring_transactions_screen.dart';
@@ -15,6 +16,7 @@ import 'wallets_screen.dart';
 import 'savings_goals_screen.dart';
 import 'notification_settings_screen.dart';
 import 'export_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -414,15 +416,30 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 100),
+                        child: _buildHeader(),
+                      ),
                       const SizedBox(height: 16),
-                      _buildWalletSelector(),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 200),
+                        child: _buildWalletSelector(),
+                      ),
                       const SizedBox(height: 20),
-                      _buildBalanceCard(),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 300),
+                        child: _buildBalanceCard(),
+                      ),
                       const SizedBox(height: 20),
-                      _buildSummaryRow(),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 400),
+                        child: _buildSummaryRow(),
+                      ),
                       const SizedBox(height: 24),
-                      _buildMonthSummary(),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 500),
+                        child: _buildMonthSummary(),
+                      ),
                       if (_categoryBreakdown.isNotEmpty) ...[
                         const SizedBox(height: 24),
                         _buildCategoryBreakdown(),
@@ -446,37 +463,93 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Good Morning,',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Good Morning,',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _userName,
+                      style: GoogleFonts.poppins(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _userName,
-                  style: GoogleFonts.poppins(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              ),
+              _buildHeaderIcon(
+                onTap: _handleLogout,
+                icon: Icons.logout_rounded,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.hardEdge,
+              children: [
+                _buildHeaderIcon(
+                  onTap: _goToWallets,
+                  icon: Icons.account_balance_wallet_outlined,
+                  color: AppColors.accent,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToRecurringTransactions,
+                  icon: Icons.repeat,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToBudgets,
+                  icon: Icons.pie_chart_outline_rounded,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToAnalytics,
+                  icon: Icons.bar_chart_rounded,
+                  color: AppColors.secondary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToSavingsGoals,
+                  icon: Icons.savings_outlined,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToNotificationSettings,
+                  icon: Icons.notifications_outlined,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 12),
+                _buildHeaderIcon(
+                  onTap: _goToExport,
+                  icon: Icons.file_download_outlined,
+                  color: AppColors.textSecondary,
                 ),
               ],
             ),
-          ),
-          _buildHeaderIcon(
-            onTap: _handleLogout,
-            icon: Icons.logout_rounded,
-            color: AppColors.textSecondary,
           ),
         ],
       ),
@@ -1496,34 +1569,41 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                activeIcon: Icons.home_rounded,
-                label: 'Home',
+              Expanded(
+                child: _buildNavItem(
+                  index: 0,
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  label: 'Home',
+                ),
               ),
-              _buildNavItem(
-                index: 1,
-                icon: Icons.receipt_long_outlined,
-                activeIcon: Icons.receipt_long_rounded,
-                label: 'Transactions',
+              Expanded(
+                child: _buildNavItem(
+                  index: 1,
+                  icon: Icons.receipt_long_outlined,
+                  activeIcon: Icons.receipt_long_rounded,
+                  label: 'Transactions',
+                ),
               ),
-              const SizedBox(width: 56),
-              _buildNavItem(
-                index: 2,
-                icon: Icons.analytics_outlined,
-                activeIcon: Icons.analytics_rounded,
-                label: 'Reports',
+              const SizedBox(width: 48),
+              Expanded(
+                child: _buildNavItem(
+                  index: 2,
+                  icon: Icons.analytics_outlined,
+                  activeIcon: Icons.analytics_rounded,
+                  label: 'Reports',
+                ),
               ),
-              _buildNavItem(
-                index: 3,
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-                label: 'Profile',
+              Expanded(
+                child: _buildNavItem(
+                  index: 3,
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  label: 'Profile',
+                ),
               ),
             ],
           ),
@@ -1550,13 +1630,16 @@ class _HomeScreenState extends State<HomeScreen> {
             _goToAnalytics();
             break;
           case 3:
-            _showProfileMenu();
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            );
             break;
         }
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
@@ -1574,6 +1657,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -1586,137 +1671,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showProfileMenu() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.inputBorder,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Menu',
-              style: GoogleFonts.poppins(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildMenuTile(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'Wallets',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToWallets();
-              },
-            ),
-            _buildMenuTile(
-              icon: Icons.pie_chart_outline_rounded,
-              title: 'Budgets',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToBudgets();
-              },
-            ),
-            _buildMenuTile(
-              icon: Icons.savings_outlined,
-              title: 'Savings Goals',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToSavingsGoals();
-              },
-            ),
-            _buildMenuTile(
-              icon: Icons.repeat,
-              title: 'Recurring Transactions',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToRecurringTransactions();
-              },
-            ),
-            _buildMenuTile(
-              icon: Icons.file_download_outlined,
-              title: 'Export',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToExport();
-              },
-            ),
-            _buildMenuTile(
-              icon: Icons.notifications_outlined,
-              title: 'Notification Settings',
-              onTap: () {
-                Navigator.pop(ctx);
-                _goToNotificationSettings();
-              },
-            ),
-            const SizedBox(height: 8),
-            _buildMenuTile(
-              icon: Icons.logout_rounded,
-              title: 'Log Out',
-              color: AppColors.expense,
-              onTap: () {
-                Navigator.pop(ctx);
-                _handleLogout();
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    Color? color,
-  }) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: (color ?? AppColors.primary).withValues(alpha: 0.1),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          icon,
-          color: color ?? AppColors.primary,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.poppins(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: color ?? AppColors.textPrimary,
-        ),
-      ),
-      trailing: Icon(
-        Icons.chevron_right_rounded,
-        color: AppColors.textSecondary,
-        size: 22,
-      ),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-    );
-  }
 }
