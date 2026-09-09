@@ -6,6 +6,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
 import '../models/expense_model.dart';
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
 
 /// Handles CSV and PDF export of transactions, and sharing the generated files.
 class ExportService {
@@ -101,9 +103,9 @@ class ExportService {
           pw.SizedBox(height: 20),
 
           // Summary
-          _summaryRow('Total Income', '\$${totalIncome.toStringAsFixed(2)}'),
-          _summaryRow('Total Expenses', '\$${totalExpenses.toStringAsFixed(2)}'),
-          _summaryRow('Balance', '\$${balance.toStringAsFixed(2)}'),
+          _summaryRow('Total Income', CurrencyFormatter.format(totalIncome, CurrencyService.instance.currentCurrency)),
+          _summaryRow('Total Expenses', CurrencyFormatter.format(totalExpenses, CurrencyService.instance.currentCurrency)),
+          _summaryRow('Balance', CurrencyFormatter.format(balance, CurrencyService.instance.currentCurrency)),
           pw.SizedBox(height: 20),
 
           // Category breakdown
@@ -122,7 +124,7 @@ class ExportService {
                 final pct = totalExpenses > 0
                     ? ((e.value / totalExpenses) * 100).toStringAsFixed(1)
                     : '0.0';
-                return [e.key, '\$${e.value.toStringAsFixed(2)}', '$pct%'];
+                return [e.key, CurrencyFormatter.format(e.value, CurrencyService.instance.currentCurrency), '$pct%'];
               }).toList(),
               headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
               cellAlignment: pw.Alignment.centerLeft,
@@ -145,7 +147,7 @@ class ExportService {
               data: expenses.map((e) {
                 final wallet = walletMap[e.walletId] ?? 'N/A';
                 final amount = '${e.isExpense ? '-' : '+'}'
-                    '\$${e.amount.toStringAsFixed(2)}';
+                    '${CurrencyFormatter.format(e.amount, CurrencyService.instance.currentCurrency)}';
                 return [
                   _pdfDate(e.date),
                   e.title,

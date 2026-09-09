@@ -8,6 +8,8 @@ import '../models/expense_model.dart';
 import '../models/recurring_transaction_model.dart';
 import '../services/recurring_transaction_service.dart';
 import '../services/notification_service.dart';
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
 import '../services/notification_settings_service.dart';
 
 /// Screen for creating or editing a recurring transaction template.
@@ -86,7 +88,7 @@ class _AddRecurringScreenState extends State<AddRecurringScreen> {
     NotificationService.instance.scheduleNotification(
       id: notifId,
       title: 'Recurring Transaction Reminder',
-      body: '"${template.title}" (\$${template.amount.toStringAsFixed(2)}) '
+      body: '"${template.title}" (${CurrencyFormatter.format(template.amount, CurrencyService.instance.currentCurrency)}) '
           'is due tomorrow.',
       scheduledTime: reminderDate,
       payload: 'recurring_${template.id}',
@@ -343,7 +345,7 @@ class _AddRecurringScreenState extends State<AddRecurringScreen> {
         color: AppColors.primary,
       ),
       decoration: InputDecoration(
-        prefixText: '\$ ',
+        prefixText: '${CurrencyService.instance.currentCurrency.symbol} ',
         prefixStyle: GoogleFonts.poppins(
           fontSize: 24,
           fontWeight: FontWeight.w700,

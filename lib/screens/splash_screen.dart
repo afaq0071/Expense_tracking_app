@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
 import '../services/auth_service.dart';
+import '../services/currency_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -63,6 +64,9 @@ class _SplashScreenState extends State<SplashScreen>
     } else if (!user.emailVerified) {
       Navigator.pushReplacementNamed(context, '/login');
     } else {
+      // Load currency preference before navigating to home.
+      await CurrencyService.instance.loadCurrency();
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     }
   }
@@ -115,83 +119,93 @@ class _SplashScreenState extends State<SplashScreen>
             ),
 
             // ── Main content ──────────────────────────────────────
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
+            Positioned.fill(
+              child: SafeArea(
                 child: Column(
                   children: [
-                    const Spacer(flex: 3),
-                    FadeTransition(
-                      opacity: _fadeAnim,
-                      child: ScaleTransition(
-                        scale: _scaleAnim,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                blurRadius: 30,
-                                offset: const Offset(0, 10),
+                    const Spacer(),
+                    // ── Centered logo + text + loader block ─────
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FadeTransition(
+                              opacity: _fadeAnim,
+                              child: ScaleTransition(
+                                scale: _scaleAnim,
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(28),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 30,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.account_balance_wallet_rounded,
+                                    size: 50,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.account_balance_wallet_rounded,
-                            size: 50,
-                            color: AppColors.primary,
-                          ),
+                            ),
+                            const SizedBox(height: 32),
+                            SlideTransition(
+                              position: _slideAnim,
+                              child: FadeTransition(
+                                opacity: _fadeAnim,
+                                child: Text(
+                                  'Expense\nTracker',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SlideTransition(
+                              position: _slideAnim,
+                              child: FadeTransition(
+                                opacity: _fadeAnim,
+                                child: Text(
+                                  'Track your spending.\nSave more, every day.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 40),
+                            SizedBox(
+                              width: 28,
+                              height: 28,
+                              child: CircularProgressIndicator(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                strokeWidth: 2.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    SlideTransition(
-                      position: _slideAnim,
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Text(
-                          'Expense\nTracker',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 36,
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SlideTransition(
-                      position: _slideAnim,
-                      child: FadeTransition(
-                        opacity: _fadeAnim,
-                        child: Text(
-                          'Track your spending.\nSave more, every day.',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            height: 1.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Spacer(flex: 4),
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        strokeWidth: 2.5,
-                      ),
-                    ),
-                    const SizedBox(height: 50),
+                    const Spacer(),
                   ],
                 ),
               ),

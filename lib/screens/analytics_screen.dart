@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../models/expense_model.dart';
 import '../services/analytics_service.dart';
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   final List<Expense> expenses;
@@ -187,7 +189,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                '\$${amount.toStringAsFixed(2)}',
+                _fmt(amount),
                 style: GoogleFonts.poppins(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -218,9 +220,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   String label;
                   if (rodIndex == 0) {
-                    label = 'Income: \$${rod.toY.toStringAsFixed(0)}';
+                    label = 'Income: ${_fmt(rod.toY)}';
                   } else {
-                    label = 'Expense: \$${rod.toY.toStringAsFixed(0)}';
+                    label = 'Expense: ${_fmt(rod.toY)}';
                   }
                   return BarTooltipItem(
                     label,
@@ -264,7 +266,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   reservedSize: 50,
                   getTitlesWidget: (value, meta) {
                     return Text(
-                      '\$${(value / 1000).toStringAsFixed(0)}k',
+                      _fmtCompact(value),
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: AppColors.textSecondary,
@@ -404,7 +406,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '\$${item.amount.toStringAsFixed(0)}',
+                    _fmt(item.amount),
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -437,8 +439,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 getTooltipItems: (spots) {
                   return spots.map((spot) {
                     final label = spot.barIndex == 0
-                        ? 'Income: \$${spot.y.toStringAsFixed(0)}'
-                        : 'Expense: \$${spot.y.toStringAsFixed(0)}';
+                        ? 'Income: ${_fmt(spot.y)}'
+                        : 'Expense: ${_fmt(spot.y)}';
                     return LineTooltipItem(
                       label,
                       GoogleFonts.poppins(
@@ -467,7 +469,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   reservedSize: 50,
                   getTitlesWidget: (value, meta) {
                     return Text(
-                      '\$${(value / 1000).toStringAsFixed(0)}k',
+                      _fmtCompact(value),
                       style: GoogleFonts.poppins(
                         fontSize: 10,
                         color: AppColors.textSecondary,
@@ -559,6 +561,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         ),
       ),
     );
+  }
+
+  String _fmt(double amount) {
+    return CurrencyFormatter.format(amount, CurrencyService.instance.currentCurrency);
+  }
+
+  String _fmtCompact(double amount) {
+    return CurrencyFormatter.formatCompact(amount, CurrencyService.instance.currentCurrency);
   }
 
   Widget _buildChartCard({

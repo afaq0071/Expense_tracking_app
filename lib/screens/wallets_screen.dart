@@ -6,6 +6,8 @@ import '../models/expense_model.dart';
 import '../models/wallet_model.dart';
 import '../services/wallet_service.dart';
 import 'add_wallet_screen.dart';
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
 
 /// Screen displaying all wallets with balances and management options.
 ///
@@ -138,7 +140,7 @@ class _WalletsScreenState extends State<WalletsScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return '\$${amount.toStringAsFixed(2)}';
+    return CurrencyFormatter.format(amount, CurrencyService.instance.currentCurrency);
   }
 
   @override

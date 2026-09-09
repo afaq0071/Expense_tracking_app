@@ -8,6 +8,9 @@ import '../services/export_service.dart';
 import '../services/firestore_service.dart';
 import '../services/wallet_service.dart';
 
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+
 /// Screen for exporting transactions as CSV or PDF monthly report.
 ///
 /// Accepts the already-loaded [expenses] list and [wallets] from the
@@ -33,6 +36,10 @@ class _ExportScreenState extends State<ExportScreen> {
   List<Expense> _expenses = [];
   List<Wallet> _wallets = [];
   bool _isLoading = false;
+
+  String _fmt(double amount) {
+    return CurrencyFormatter.format(amount, CurrencyService.instance.currentCurrency);
+  }
 
   @override
   void initState() {
@@ -382,19 +389,19 @@ class _ExportScreenState extends State<ExportScreen> {
           const Divider(height: 24),
           _buildSummaryRow(
             'Income',
-            '\$${_totalIncome.toStringAsFixed(2)}',
+            _fmt(_totalIncome),
             AppColors.income,
           ),
           const Divider(height: 24),
           _buildSummaryRow(
             'Expenses',
-            '\$${_totalExpenses.toStringAsFixed(2)}',
+            _fmt(_totalExpenses),
             AppColors.expense,
           ),
           const Divider(height: 24),
           _buildSummaryRow(
             'Balance',
-            '\$${_balance.toStringAsFixed(2)}',
+            _fmt(_balance),
             _balance >= 0 ? AppColors.income : AppColors.expense,
           ),
         ],

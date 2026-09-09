@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+import 'currency_model.dart';
+
 /// Savings goal model representing a user's financial target.
 ///
 /// Each goal tracks a name, target amount, current saved amount,
@@ -14,6 +18,7 @@ class SavingsGoal {
   final String iconName;
   final bool isCompleted;
   final DateTime createdAt;
+  final String? currencyCode;
 
   const SavingsGoal({
     required this.id,
@@ -24,6 +29,7 @@ class SavingsGoal {
     this.iconName = 'savings',
     this.isCompleted = false,
     required this.createdAt,
+    this.currencyCode,
   });
 
   // ── Preset icons ────────────────────────────────────────────────
@@ -92,9 +98,12 @@ class SavingsGoal {
     return '$day $month $year';
   }
 
-  String get formattedCurrentAmount => '\$${currentAmount.toStringAsFixed(2)}';
-  String get formattedTargetAmount => '\$${targetAmount.toStringAsFixed(2)}';
-  String get formattedRemaining => '\$${remaining.toStringAsFixed(2)}';
+  AppCurrency get transactionCurrency =>
+      currencyCode != null ? AppCurrency.fromCode(currencyCode) : CurrencyService.instance.currentCurrency;
+
+  String get formattedCurrentAmount => CurrencyFormatter.format(currentAmount, transactionCurrency);
+  String get formattedTargetAmount => CurrencyFormatter.format(targetAmount, transactionCurrency);
+  String get formattedRemaining => CurrencyFormatter.format(remaining, transactionCurrency);
 
   String get daysRemainingText {
     if (daysRemaining < 0) return '${-daysRemaining} days overdue';
@@ -113,6 +122,7 @@ class SavingsGoal {
         'iconName': iconName,
         'isCompleted': isCompleted,
         'createdAt': createdAt.toIso8601String(),
+        if (currencyCode != null) 'currencyCode': currencyCode,
       };
 
   factory SavingsGoal.fromJson(Map<String, dynamic> json) {
@@ -139,6 +149,7 @@ class SavingsGoal {
       iconName: json['iconName'] as String? ?? 'savings',
       isCompleted: json['isCompleted'] as bool? ?? false,
       createdAt: parsedCreatedAt,
+      currencyCode: json['currencyCode'] as String?,
     );
   }
 
@@ -153,6 +164,7 @@ class SavingsGoal {
     String? iconName,
     bool? isCompleted,
     DateTime? createdAt,
+    String? currencyCode,
   }) {
     return SavingsGoal(
       id: id ?? this.id,
@@ -163,6 +175,7 @@ class SavingsGoal {
       iconName: iconName ?? this.iconName,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 }

@@ -7,6 +7,7 @@ import '../constants/app_colors.dart';
 import '../models/budget_model.dart';
 import '../models/expense_model.dart';
 import '../services/budget_service.dart';
+import '../services/currency_service.dart';
 
 /// Screen for creating or editing a monthly budget.
 ///
@@ -382,7 +383,7 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               color: AppColors.primary,
             ),
             decoration: InputDecoration(
-              prefixText: '\$ ',
+              prefixText: '${CurrencyService.instance.currentCurrency.symbol} ',
               prefixStyle: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -534,7 +535,7 @@ class _AddBudgetScreenState extends State<AddBudgetScreen> {
               color: AppColors.textPrimary,
             ),
             decoration: InputDecoration(
-              prefixText: '\$ ',
+              prefixText: '${CurrencyService.instance.currentCurrency.symbol} ',
               prefixStyle: GoogleFonts.poppins(
                 fontSize: 14,
                 color: AppColors.textSecondary,

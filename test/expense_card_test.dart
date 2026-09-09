@@ -55,7 +55,7 @@ void main() {
 
     expect(find.text('August Paycheck'), findsOneWidget);
     expect(find.text('Salary'), findsOneWidget);
-    expect(find.text('+\$2500.00'), findsOneWidget);
+    expect(find.text('+\$2,500.00'), findsOneWidget);
   });
 
   testWidgets('onLongPress fires when the card is long-pressed',

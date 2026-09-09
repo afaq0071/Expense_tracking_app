@@ -10,6 +10,9 @@ import '../services/notification_service.dart';
 import '../services/notification_settings_service.dart';
 import 'add_budget_screen.dart';
 
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+
 /// Screen displaying all budgets with spending progress.
 ///
 /// Shows budget amount, spent amount, remaining amount, and percentage used.
@@ -26,6 +29,10 @@ class BudgetScreen extends StatefulWidget {
 class _BudgetScreenState extends State<BudgetScreen> {
   List<Budget> _budgets = [];
   bool _isLoading = true;
+
+  String _fmt(double amount) {
+    return CurrencyFormatter.format(amount, CurrencyService.instance.currentCurrency);
+  }
 
   @override
   void initState() {
@@ -102,13 +109,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
         final dedupKey = 'budget_notif_${budget.id}_exceeded_$today';
         if (prefs.getString(dedupKey) != today) {
           await prefs.setString(dedupKey, today);
-          final spentStr = spent.toStringAsFixed(2);
-          final budgetStr = budget.totalAmount.toStringAsFixed(2);
           await notifications.showNotification(
             id: NotificationService.budgetExceededId(budget.id),
             title: 'Budget Exceeded!',
             body:
-                '"${budget.name}" has exceeded the budget — \$$spentStr spent from \$$budgetStr budget.',
+                '"${budget.name}" has exceeded the budget — ${_fmt(spent)} spent from ${_fmt(budget.totalAmount)} budget.',
           );
         }
       }
@@ -428,7 +433,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '\$${amount.toStringAsFixed(2)}',
+              _fmt(amount),
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
@@ -548,7 +553,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                   ),
                   Text(
-                    '\$${categorySpent.toStringAsFixed(0)} / \$${entry.value.toStringAsFixed(0)}',
+                    '${_fmt(categorySpent)} / ${_fmt(entry.value)}',
                     style: GoogleFonts.poppins(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,

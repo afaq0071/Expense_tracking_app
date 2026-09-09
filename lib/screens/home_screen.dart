@@ -17,6 +17,8 @@ import 'savings_goals_screen.dart';
 import 'notification_settings_screen.dart';
 import 'export_screen.dart';
 import 'settings_screen.dart';
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -366,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return '\$${amount.toStringAsFixed(2)}';
+    return CurrencyFormatter.format(amount, CurrencyService.instance.currentCurrency);
   }
 
   void _clearFilters() {

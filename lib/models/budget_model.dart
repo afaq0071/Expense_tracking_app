@@ -1,3 +1,7 @@
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+import 'currency_model.dart';
+
 /// Budget model representing a monthly budget.
 ///
 /// Each budget has a total amount and optional category-specific budgets.
@@ -10,6 +14,7 @@ class Budget {
   final int year;
   final Map<String, double> categoryBudgets; // category -> amount
   final DateTime createdAt;
+  final String? currencyCode;
 
   const Budget({
     required this.id,
@@ -19,6 +24,7 @@ class Budget {
     required this.year,
     this.categoryBudgets = const {},
     required this.createdAt,
+    this.currencyCode,
   });
 
   // ── JSON serialization ─────────────────────────────────────────────
@@ -32,6 +38,7 @@ class Budget {
         'year': year,
         'categoryBudgets': categoryBudgets,
         'createdAt': createdAt.toIso8601String(),
+        if (currencyCode != null) 'currencyCode': currencyCode,
       };
 
   /// Create a [Budget] from a JSON map.
@@ -60,6 +67,7 @@ class Budget {
       year: json['year'] as int,
       categoryBudgets: parsedCategoryBudgets,
       createdAt: parsedCreatedAt,
+      currencyCode: json['currencyCode'] as String?,
     );
   }
 
@@ -82,6 +90,14 @@ class Budget {
     return month == now.month && year == now.year;
   }
 
+  AppCurrency get transactionCurrency =>
+      currencyCode != null ? AppCurrency.fromCode(currencyCode) : CurrencyService.instance.currentCurrency;
+
+  String get formattedTotalAmount => CurrencyFormatter.format(totalAmount, transactionCurrency);
+
+  String formattedCategoryAmount(double amount) =>
+      CurrencyFormatter.format(amount, transactionCurrency);
+
   /// Copy with changes.
   Budget copyWith({
     String? id,
@@ -91,6 +107,7 @@ class Budget {
     int? year,
     Map<String, double>? categoryBudgets,
     DateTime? createdAt,
+    String? currencyCode,
   }) {
     return Budget(
       id: id ?? this.id,
@@ -100,6 +117,7 @@ class Budget {
       year: year ?? this.year,
       categoryBudgets: categoryBudgets ?? this.categoryBudgets,
       createdAt: createdAt ?? this.createdAt,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 }

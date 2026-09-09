@@ -7,6 +7,7 @@ import '../constants/app_colors.dart';
 import '../models/expense_model.dart';
 import '../models/wallet_model.dart';
 import '../services/firestore_service.dart';
+import '../services/currency_service.dart';
 import '../services/wallet_service.dart';
 
 class AddExpenseScreen extends StatefulWidget {
@@ -366,7 +367,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
         color: AppColors.textPrimary,
       ),
       decoration: InputDecoration(
-        prefixText: '\$ ',
+        prefixText: '${CurrencyService.instance.currentCurrency.symbol} ',
         prefixStyle: GoogleFonts.poppins(
           fontSize: 28,
           fontWeight: FontWeight.w700,

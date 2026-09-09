@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+import 'currency_model.dart';
+
 /// Expense model representing a single income or expense entry.
 ///
 /// Each entry has a title, amount, category, date, and type (income/expense).
@@ -15,6 +19,7 @@ class Expense {
   final bool isExpense;
   final String? recurringTemplateId;
   final String? walletId;
+  final String? currencyCode;
 
   const Expense({
     required this.id,
@@ -25,6 +30,7 @@ class Expense {
     required this.isExpense,
     this.recurringTemplateId,
     this.walletId,
+    this.currencyCode,
   });
 
   // ── Predefined categories ──────────────────────────────────────────
@@ -82,6 +88,7 @@ class Expense {
         if (recurringTemplateId != null)
           'recurringTemplateId': recurringTemplateId,
         if (walletId != null) 'walletId': walletId,
+        if (currencyCode != null) 'currencyCode': currencyCode,
       };
 
   /// Create an [Expense] from a JSON map.
@@ -102,6 +109,7 @@ class Expense {
       isExpense: json['isExpense'] as bool,
       recurringTemplateId: json['recurringTemplateId'] as String?,
       walletId: json['walletId'] as String?,
+      currencyCode: json['currencyCode'] as String?,
     );
   }
 
@@ -112,10 +120,22 @@ class Expense {
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
 
+  /// Returns the effective currency for this transaction.
+  /// Uses the transaction's own currency if set, otherwise the user's default.
+  AppCurrency get effectiveCurrency =>
+      CurrencyService.instance.currentCurrency;
+
+  /// Returns the currency for this specific transaction.
+  AppCurrency get transactionCurrency =>
+      currencyCode != null ? AppCurrency.fromCode(currencyCode) : effectiveCurrency;
+
   /// Returns the formatted amount with a + or - prefix.
   String get formattedAmount {
-    final formatted = amount.toStringAsFixed(2);
-    return isExpense ? '-\$$formatted' : '+\$$formatted';
+    return CurrencyFormatter.formatSigned(
+      amount,
+      transactionCurrency,
+      isExpense: isExpense,
+    );
   }
 
   /// Returns a user-friendly date string.

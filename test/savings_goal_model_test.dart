@@ -207,7 +207,7 @@ void main() {
         targetDate: DateTime.now(),
         createdAt: DateTime.now(),
       );
-      expect(goal.formattedTargetAmount, '\$5000.00');
+      expect(goal.formattedTargetAmount, '\$5,000.00');
     });
 
     test('formattedRemaining formats correctly', () {

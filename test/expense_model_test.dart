@@ -76,7 +76,7 @@ void main() {
         date: DateTime(2026, 1, 1),
         isExpense: false,
       );
-      expect(income.formattedAmount, '+\$1200.00');
+      expect(income.formattedAmount, '+\$1,200.00');
     });
   });
 

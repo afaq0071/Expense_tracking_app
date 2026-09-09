@@ -1,3 +1,7 @@
+import '../services/currency_service.dart';
+import '../utils/currency_formatter.dart';
+import 'currency_model.dart';
+
 /// Recurring transaction template.
 ///
 /// Defines how often a transaction should repeat. The actual transactions
@@ -16,6 +20,7 @@ class RecurringTransaction {
   final bool isActive;
   final DateTime createdAt;
   final DateTime? lastGeneratedDate;
+  final String? currencyCode;
 
   const RecurringTransaction({
     required this.id,
@@ -28,6 +33,7 @@ class RecurringTransaction {
     this.isActive = true,
     required this.createdAt,
     this.lastGeneratedDate,
+    this.currencyCode,
   });
 
   // ── JSON serialization ─────────────────────────────────────────────
@@ -43,6 +49,7 @@ class RecurringTransaction {
         'isActive': isActive,
         'createdAt': createdAt.toIso8601String(),
         'lastGeneratedDate': lastGeneratedDate?.toIso8601String(),
+        if (currencyCode != null) 'currencyCode': currencyCode,
       };
 
   factory RecurringTransaction.fromJson(Map<String, dynamic> json) {
@@ -73,6 +80,7 @@ class RecurringTransaction {
       isActive: json['isActive'] as bool? ?? true,
       createdAt: DateTime.parse(json['createdAt'] as String),
       lastGeneratedDate: parsedLastGenerated,
+      currencyCode: json['currencyCode'] as String?,
     );
   }
 
@@ -98,9 +106,15 @@ class RecurringTransaction {
     }
   }
 
+  AppCurrency get transactionCurrency =>
+      currencyCode != null ? AppCurrency.fromCode(currencyCode) : CurrencyService.instance.currentCurrency;
+
   String get formattedAmount {
-    final formatted = amount.toStringAsFixed(2);
-    return isExpense ? '-\$$formatted' : '+\$$formatted';
+    return CurrencyFormatter.formatSigned(
+      amount,
+      transactionCurrency,
+      isExpense: isExpense,
+    );
   }
 
   String get formattedStartDate {
@@ -137,6 +151,7 @@ class RecurringTransaction {
     bool? isActive,
     DateTime? createdAt,
     DateTime? lastGeneratedDate,
+    String? currencyCode,
   }) {
     return RecurringTransaction(
       id: id ?? this.id,
@@ -149,6 +164,7 @@ class RecurringTransaction {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       lastGeneratedDate: lastGeneratedDate ?? this.lastGeneratedDate,
+      currencyCode: currencyCode ?? this.currencyCode,
     );
   }
 }
